@@ -1,24 +1,26 @@
 import "server-only";
 
-import { demoAuth } from "./demo";
+import { localAuth } from "./local";
 
-// Sign-in is behind this interface so the provider can be chosen later
-// (Supabase Auth, Better Auth, or our own OTP code) by adding one file next
-// to demo.ts and switching AUTH_PROVIDER. Pages and modules only ever call
-// `auth.*`, never a provider's SDK. sendOtp / verifyOtp arrive in Slice 2.
+// Identity only: proving someone owns an email (one-time code) and keeping
+// them signed in (session). Who the student is (name, IIT, referral code)
+// lives in modules/students. Supabase Auth, Better Auth or similar can
+// replace local.ts by implementing this interface; AUTH_PROVIDER picks it.
 
-export type Student = {
-  id: string;
-  name: string;
-  email: string;
-  institute: string;
-  branch: string;
-  emailVerified: boolean;
-};
+export type AuthResult<T = object> =
+  ({ ok: true } & T) | { ok: false; error: string };
 
 export interface AuthProvider {
-  // The signed-in student for this request, or null if signed out.
-  getCurrentStudent(): Promise<Student | null>;
+  // Emails a one-time code. Rate-limited per email.
+  sendCode(email: string): Promise<AuthResult>;
+  // Checks the code and, if right, starts a signed-in session.
+  verifyCode(
+    email: string,
+    code: string,
+  ): Promise<AuthResult<{ userId: string }>>;
+  // The signed-in user's id for this request, or null.
+  getUserId(): Promise<string | null>;
+  signOut(): Promise<void>;
 }
 
-export const auth: AuthProvider = demoAuth;
+export const auth: AuthProvider = localAuth;

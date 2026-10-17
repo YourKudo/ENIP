@@ -1,6 +1,5 @@
 import "server-only";
 
-import type { Student } from "@/adapters/auth";
 import {
   enipApp,
   type ChatMessage,
@@ -11,6 +10,7 @@ import {
   FREE_CONVERSATIONS,
   FREE_VISIBLE_REPLIES,
 } from "@/config/rules";
+import type { Student } from "@/modules/students";
 
 // Website-side chat rules (PRD 6.3). Messages themselves live in the app's
 // backend; this module decides what the student may send and see.

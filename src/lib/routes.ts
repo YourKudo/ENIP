@@ -16,6 +16,9 @@ export const routes = {
   // `next` brings the student back to where they were after signing up
   // (FR-10). Without it they land on the waitlist.
   join: (next?: string) => withParams("/join", { next }),
+  verify: (next?: string) => withParams("/join/verify", { next }),
+  signIn: (next?: string) => withParams("/signin", { next }),
+  waitlist: "/waitlist",
 };
 
 // Only same-site paths are accepted as return targets, so a crafted link

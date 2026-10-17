@@ -3,8 +3,8 @@ import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { Lock } from "lucide-react";
 
-import { auth } from "@/adapters/auth";
-import { enipApp } from "@/adapters/enip-app";
+import { getCurrentStudent } from "@/modules/students";
+import { enipApp, type AlumniProfile } from "@/adapters/enip-app";
 import { ButtonLink } from "@/components/button-link";
 import { AutoRefresh } from "@/components/chat/auto-refresh";
 import { Composer } from "@/components/chat/composer";
@@ -23,11 +23,15 @@ import { sendMessageAction } from "./actions";
 
 export const metadata: Metadata = { title: "Chat" };
 
-const starters = [
-  "How did you prepare for placements?",
-  "Can you review my CV?",
-  "What's the work like day to day?",
-];
+// Curiosity openers about this senior. Tapping one only fills the message
+// box; the student decides whether to send it.
+function startersFor(senior: AlumniProfile) {
+  return [
+    `What's a normal day like at ${senior.company}?`,
+    `How did you end up as a ${senior.jobTitle}?`,
+    `What do you wish you knew in 3rd year at ${senior.institute}?`,
+  ];
+}
 
 // The chat depends on who is signed in, so it renders per request inside
 // Suspense; the skeleton shows instantly meanwhile.
@@ -48,7 +52,7 @@ async function ChatScreen({
 
   // Path B onboarding: the first chat attempt is when we ask for details.
   // After verifying, the student comes straight back here.
-  const student = await auth.getCurrentStudent();
+  const student = await getCurrentStudent();
   if (!student) redirect(routes.join(routes.chat(alumniId, backHref)));
 
   const senior = await enipApp.getAlumni(alumniId);
@@ -118,7 +122,7 @@ async function ChatScreen({
       <Composer
         action={sendMessageAction.bind(null, alumniId)}
         disabled={chat.blockedReason !== null}
-        suggestions={isEmpty && !chat.blockedReason ? starters : []}
+        suggestions={isEmpty && !chat.blockedReason ? startersFor(senior) : []}
       />
     </div>
   );

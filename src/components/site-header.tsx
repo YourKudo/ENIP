@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import Link from "next/link";
 
 import { routes } from "@/lib/routes";
+import { getCurrentStudent } from "@/modules/students";
 import { ButtonLink } from "./button-link";
 
 const nav = [
@@ -31,8 +33,26 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
-        <ButtonLink href={routes.join()}>Join</ButtonLink>
+        {/* Depends on the session cookie, so it streams in on its own and
+            the rest of the page can stay static. */}
+        <Suspense fallback={<ButtonLink href={routes.join()}>Join</ButtonLink>}>
+          <AccountButton />
+        </Suspense>
       </div>
     </header>
+  );
+}
+
+async function AccountButton() {
+  const student = await getCurrentStudent();
+  if (!student) return <ButtonLink href={routes.join()}>Join</ButtonLink>;
+  return (
+    <Link
+      href={routes.waitlist}
+      aria-label={`Your account (${student.name})`}
+      className="bg-avatar text-primary-dark flex size-11 items-center justify-center rounded-2xl text-lg font-bold uppercase"
+    >
+      {student.name[0]}
+    </Link>
   );
 }
