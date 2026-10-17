@@ -7,7 +7,9 @@ import { connection } from "next/server";
 import { JoinForm } from "@/components/onboarding/join-form";
 import { PageSkeleton } from "@/components/page-skeleton";
 import { iits } from "@/config/iits";
+import { HEARD_FROM_OPTIONS } from "@/config/sources";
 import { routes, safeReturnPath } from "@/lib/routes";
+import { getRememberedReferral } from "@/modules/growth";
 import { getCurrentStudent, graduationYears } from "@/modules/students";
 import { signUpAction } from "./actions";
 
@@ -30,6 +32,7 @@ async function Join({ searchParams }: PageProps<"/join">) {
   // The graduation years depend on today's date, so build them per request.
   await connection();
   const toChat = next.startsWith("/chat/");
+  const invitedBy = await getRememberedReferral();
 
   return (
     <div className="mx-auto max-w-[480px] px-6 py-10">
@@ -45,6 +48,13 @@ async function Join({ searchParams }: PageProps<"/join">) {
           : "Verify your IIT email to join. Refer friends to move up the list."}
       </p>
 
+      {invitedBy && (
+        <p className="bg-chip text-primary mt-5 rounded-2xl px-4 py-3 text-sm font-semibold">
+          {invitedBy.referrerFirstName} invited you. Their code {invitedBy.code}{" "}
+          is filled in below.
+        </p>
+      )}
+
       <JoinForm
         action={signUpAction}
         iits={iits.map(({ id, name, domains }) => ({
@@ -53,6 +63,8 @@ async function Join({ searchParams }: PageProps<"/join">) {
           domain: domains[0],
         }))}
         years={graduationYears()}
+        sources={HEARD_FROM_OPTIONS}
+        rememberedCode={invitedBy?.code ?? null}
         next={next}
       />
 

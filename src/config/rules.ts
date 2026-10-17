@@ -3,6 +3,23 @@
 
 export const POINTS_PER_REFERRAL = 10;
 
+// Waitlist (PRD 7.3): successful referrals needed for each milestone, how
+// many places it moves the student up, and the one that skips the line.
+export type WaitlistMilestone = {
+  referrals: number;
+  moveUp: number;
+  skip?: boolean;
+};
+export const WAITLIST_MILESTONES: WaitlistMilestone[] = [
+  { referrals: 1, moveUp: 3 },
+  { referrals: 2, moveUp: 7 },
+  { referrals: 3, moveUp: 0, skip: true },
+];
+
+// How long a referral link is remembered in the friend's browser, so they
+// are still credited if they come back later by typing the plain URL.
+export const REFERRAL_COOKIE_DAYS = 30;
+
 // Free alumni chat (PRD 6.3): how many seniors a student can start a free
 // chat with, messages they can send in each, and how many senior replies
 // they can read before the rest are blurred.

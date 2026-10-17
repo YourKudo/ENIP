@@ -10,6 +10,7 @@ import {
   FREE_CONVERSATIONS,
   FREE_VISIBLE_REPLIES,
 } from "@/config/rules";
+import { hasFullChatAccess } from "@/modules/growth";
 import type { Student } from "@/modules/students";
 
 // Website-side chat rules (PRD 6.3). Messages themselves live in the app's
@@ -42,20 +43,16 @@ export function describeBlocked(reason: NonNullable<BlockedReason>) {
   return blockedMessages[reason];
 }
 
-// Referrals and points unlock full chat in Slice 3; until then nobody has it.
-function hasFullChatAccess(): boolean {
-  return false;
-}
-
 export async function getChatView(
   student: Student,
   alumniId: string,
 ): Promise<ChatView> {
-  const [messages, partners] = await Promise.all([
+  // A referral (or skipping the waitlist) removes the free-chat limits.
+  const [messages, partners, fullAccess] = await Promise.all([
     enipApp.listMessages(student.id, alumniId),
     enipApp.listChatPartners(student.id),
+    hasFullChatAccess(student.id),
   ]);
-  const fullAccess = hasFullChatAccess();
 
   let repliesSeen = 0;
   let lockedReplyCount = 0;

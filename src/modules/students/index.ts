@@ -7,6 +7,12 @@ import { z } from "zod";
 import { auth } from "@/adapters/auth";
 import { db, type StudentRecord } from "@/adapters/db";
 import { emailBelongsTo, findIit } from "@/config/iits";
+import { isHeardFrom } from "@/config/sources";
+import {
+  isValidReferralCode,
+  normalizeCode,
+  onStudentVerified,
+} from "@/modules/growth";
 
 // Sign-up and sign-in rules (PRD 6.2). Both onboarding paths use these:
 // "Join the network" lands on the waitlist, "Try it" returns to the chat.
@@ -16,7 +22,16 @@ import { emailBelongsTo, findIit } from "@/config/iits";
 export type Student = StudentRecord;
 
 export type FieldErrors = Partial<
-  Record<"name" | "iitId" | "graduationYear" | "email" | "phone", string>
+  Record<
+    | "name"
+    | "iitId"
+    | "graduationYear"
+    | "email"
+    | "phone"
+    | "heardFrom"
+    | "referralCode",
+    string
+  >
 >;
 
 export type StartResult =
@@ -25,7 +40,6 @@ export type StartResult =
 
 const PENDING_TTL_MS = 30 * 60 * 1000;
 const PENDING_COOKIE = "enip_pending_email";
-const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I
 
 export function graduationYears(): number[] {
   const thisYear = new Date().getFullYear();
@@ -60,6 +74,10 @@ const signUpSchema = z.object({
     )
     .transform((p) => `+91${p}`),
   whatsappConsent: z.literal("on").optional(),
+  heardFrom: z
+    .string()
+    .refine(isHeardFrom, "Tell us how you heard about ENIP."),
+  referralCode: z.string().transform(normalizeCode).optional(),
 });
 
 export async function getCurrentStudent(): Promise<Student | null> {
@@ -99,6 +117,15 @@ export async function startSignUp(form: FormData): Promise<StartResult> {
       },
     };
   }
+  const referralCode = input.referralCode || null;
+  if (referralCode && !(await isValidReferralCode(referralCode))) {
+    return {
+      ok: false,
+      fieldErrors: {
+        referralCode: "We couldn't find this code. Check it or leave it empty.",
+      },
+    };
+  }
 
   const consent = input.whatsappConsent === "on";
   await db.pendingSignUps.put({
@@ -110,7 +137,9 @@ export async function startSignUp(form: FormData): Promise<StartResult> {
       phone: input.phone,
       whatsappConsent: consent,
       whatsappConsentAt: consent ? new Date().toISOString() : null,
+      heardFrom: input.heardFrom,
     },
+    referralCode,
     expiresAt: Date.now() + PENDING_TTL_MS,
   });
   return sendCodeTo(input.email);
@@ -169,11 +198,12 @@ export async function completeVerification(
       ...pending.details,
       id: randomUUID(),
       authUserId: verified.userId,
-      referralCode: await newReferralCode(),
+      referralCode: await newReferralCode(pending.details.name),
       createdAt: new Date().toISOString(),
     };
     await db.students.insert(student);
     await db.pendingSignUps.delete(email);
+    await onStudentVerified(student, pending.referralCode);
   }
 
   (await cookies()).delete(PENDING_COOKIE);
@@ -210,12 +240,18 @@ async function getPendingEmail() {
   return (await cookies()).get(PENDING_COOKIE)?.value ?? null;
 }
 
-async function newReferralCode(): Promise<string> {
-  for (;;) {
-    const code = Array.from(
-      { length: 6 },
-      () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)],
-    ).join("");
+// Easy to say and remember: first 4 letters of the first name + 2 random
+// digits, e.g. "ROHA47". Random digits (not phone digits) so the code
+// reveals nothing; a third digit is added if the name is very common.
+async function newReferralCode(name: string): Promise<string> {
+  const letters = (name.split(" ")[0] ?? "")
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "")
+    .padEnd(4, "X")
+    .slice(0, 4);
+  for (let attempt = 0; ; attempt++) {
+    const digits = attempt < 20 ? 2 : 3;
+    const code = `${letters}${randomInt(10 ** (digits - 1), 10 ** digits)}`;
     if (!(await db.students.findByReferralCode(code))) return code;
   }
 }

@@ -1,4 +1,4 @@
-import { and, eq, gt, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, sql, sum } from "drizzle-orm";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
@@ -24,7 +24,15 @@ function orm(): Orm {
   return holder.__enipOrm;
 }
 
-const { students, pendingSignUps, otpCodes, sessions } = schema;
+const {
+  students,
+  pendingSignUps,
+  otpCodes,
+  sessions,
+  waitlistEntries,
+  referrals,
+  pointsLedger,
+} = schema;
 
 function toStudent(row: typeof students.$inferSelect): StudentRecord {
   return {
@@ -37,6 +45,7 @@ function toStudent(row: typeof students.$inferSelect): StudentRecord {
     phone: row.phone,
     whatsappConsent: row.whatsappConsent,
     whatsappConsentAt: row.whatsappConsentAt?.toISOString() ?? null,
+    heardFrom: row.heardFrom,
     referralCode: row.referralCode,
     createdAt: row.createdAt.toISOString(),
   };
@@ -91,12 +100,17 @@ export const postgresDb: Db = {
       return row
         ? {
             details: row.details as StudentDetails,
+            referralCode: row.referralCode,
             expiresAt: row.expiresAt.getTime(),
           }
         : null;
     },
-    async put({ details, expiresAt }) {
-      const values = { details, expiresAt: new Date(expiresAt) };
+    async put({ details, referralCode, expiresAt }) {
+      const values = {
+        details,
+        referralCode,
+        expiresAt: new Date(expiresAt),
+      };
       await orm()
         .insert(pendingSignUps)
         .values({ email: details.email, ...values })
@@ -169,6 +183,150 @@ export const postgresDb: Db = {
     },
     async delete(tokenHash) {
       await orm().delete(sessions).where(eq(sessions.tokenHash, tokenHash));
+    },
+  },
+
+  waitlist: {
+    async join(studentId) {
+      await orm()
+        .insert(waitlistEntries)
+        .values({ studentId })
+        .onConflictDoNothing();
+    },
+    async get(studentId) {
+      const [row] = await orm()
+        .select()
+        .from(waitlistEntries)
+        .where(eq(waitlistEntries.studentId, studentId))
+        .limit(1);
+      return row
+        ? {
+            studentId: row.studentId,
+            joinedAt: row.joinedAt.getTime(),
+            bonusPositions: row.bonusPositions,
+            admitted: row.status === "admitted",
+          }
+        : null;
+    },
+    // Place = order of joining, minus the places earned by referrals.
+    // Ties go to whoever joined first. Computed, never stored, so it is
+    // always consistent.
+    async position(studentId) {
+      const rows = await orm().execute<{ position: number }>(sql`
+        with ranked as (
+          select student_id, joined_at,
+                 row_number() over (order by joined_at) - bonus_positions as score
+          from ${waitlistEntries}
+          where status = 'waiting'
+        )
+        select (
+          select count(*) from ranked r2
+          where r2.score < r1.score
+             or (r2.score = r1.score and r2.joined_at < r1.joined_at)
+        )::int + 1 as position
+        from ranked r1
+        where r1.student_id = ${studentId}
+      `);
+      return rows[0]?.position ?? null;
+    },
+    async waitingCount() {
+      const [row] = await orm()
+        .select({ n: count() })
+        .from(waitlistEntries)
+        .where(eq(waitlistEntries.status, "waiting"));
+      return row?.n ?? 0;
+    },
+    async setProgress(studentId, bonusPositions, admitted) {
+      await orm()
+        .update(waitlistEntries)
+        .set({
+          bonusPositions,
+          status: admitted ? "admitted" : "waiting",
+          admittedAt: admitted ? sql`coalesce(admitted_at, now())` : null,
+        })
+        .where(eq(waitlistEntries.studentId, studentId));
+    },
+  },
+
+  referrals: {
+    async addSuccessful({ referrerId, refereeId, codeUsed }) {
+      const inserted = await orm()
+        .insert(referrals)
+        .values({
+          referrerId,
+          refereeId,
+          codeUsed,
+          status: "successful",
+          verifiedAt: new Date(),
+        })
+        .onConflictDoNothing({ target: referrals.refereeId })
+        .returning({ id: referrals.id });
+      if (inserted[0]) return { id: inserted[0].id, created: true };
+      const [existing] = await orm()
+        .select({ id: referrals.id })
+        .from(referrals)
+        .where(eq(referrals.refereeId, refereeId));
+      return { id: existing.id, created: false };
+    },
+    async countSuccessful(referrerId) {
+      const [row] = await orm()
+        .select({ n: count() })
+        .from(referrals)
+        .where(
+          and(
+            eq(referrals.referrerId, referrerId),
+            eq(referrals.status, "successful"),
+          ),
+        );
+      return row?.n ?? 0;
+    },
+    async listInvited(referrerId, code) {
+      const done = await orm()
+        .select({ name: students.name, at: referrals.createdAt })
+        .from(referrals)
+        .innerJoin(students, eq(students.id, referrals.refereeId))
+        .where(eq(referrals.referrerId, referrerId))
+        .orderBy(desc(referrals.createdAt));
+      const waiting = await orm()
+        .select({ details: pendingSignUps.details })
+        .from(pendingSignUps)
+        .where(
+          and(
+            eq(pendingSignUps.referralCode, code),
+            gt(pendingSignUps.expiresAt, new Date()),
+          ),
+        );
+      const firstName = (name: string) => name.split(" ")[0];
+      return [
+        ...waiting.map(({ details }) => ({
+          firstName: firstName((details as StudentDetails).name),
+          status: "pending" as const,
+          at: Date.now(),
+        })),
+        ...done.map((r) => ({
+          firstName: firstName(r.name),
+          status: "successful" as const,
+          at: r.at.getTime(),
+        })),
+      ];
+    },
+  },
+
+  points: {
+    async award({ studentId, delta, reason, refId }) {
+      await orm()
+        .insert(pointsLedger)
+        .values({ studentId, delta, reason, refId })
+        .onConflictDoNothing({
+          target: [pointsLedger.reason, pointsLedger.refId],
+        });
+    },
+    async balance(studentId) {
+      const [row] = await orm()
+        .select({ total: sum(pointsLedger.delta) })
+        .from(pointsLedger)
+        .where(eq(pointsLedger.studentId, studentId));
+      return Number(row?.total ?? 0);
     },
   },
 };

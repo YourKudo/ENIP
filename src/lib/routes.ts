@@ -20,6 +20,8 @@ export const routes = {
   signIn: (next?: string) => withParams("/signin", { next }),
   waitlist: "/waitlist",
   devInbox: "/dev/inbox",
+  // Short link people share; remembers the code, then opens the home page.
+  referralLink: (code: string) => `/r/${code}`,
 };
 
 // Only same-site paths are accepted as return targets, so a crafted link

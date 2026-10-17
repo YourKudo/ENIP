@@ -38,23 +38,28 @@ Owner shown per table. "→ Phase 2" says what happens to it when we connect.
 
 ### students (web)
 
-| column              | type               | notes                                               |
-| ------------------- | ------------------ | --------------------------------------------------- |
-| id                  | uuid PK            | the web's id; tracks points and referrals           |
-| app_user_id         | text, unique, null | set when linked to the app user (phase 2)           |
-| email               | text, unique       | verified institute email, lowercase                 |
-| email_verified_at   | timestamptz        |                                                     |
-| name                | text               |                                                     |
-| iit_id              | text               | e.g. `bombay` (see `src/config/iits.ts`)            |
-| graduation_year     | int                |                                                     |
-| phone               | text, unique       | `+91…`                                              |
-| whatsapp_consent    | bool               | FR-21                                               |
-| whatsapp_consent_at | timestamptz, null  | when consent was given                              |
-| referral_code       | text, unique       | 6 characters, e.g. `XJPPXX`                         |
-| role                | text               | `student` (default) or `mentor`, for `/team` access |
-| created_at          | timestamptz        |                                                     |
+| column              | type               | notes                                                                                                        |
+| ------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| id                  | uuid PK            | the web's id; tracks points and referrals                                                                    |
+| app_user_id         | text, unique, null | set when linked to the app user (phase 2)                                                                    |
+| email               | text, unique       | verified institute email, lowercase                                                                          |
+| email_verified_at   | timestamptz        |                                                                                                              |
+| name                | text               |                                                                                                              |
+| iit_id              | text               | e.g. `bombay` (see `src/config/iits.ts`)                                                                     |
+| graduation_year     | int                |                                                                                                              |
+| phone               | text, unique       | `+91…`                                                                                                       |
+| whatsapp_consent    | bool               | FR-21                                                                                                        |
+| whatsapp_consent_at | timestamptz, null  | when consent was given                                                                                       |
+| heard_from          | text, null         | "How did you hear about us?" id (`friend`, `whatsapp`, `instagram`, `linkedin`, `senior`, `campus`, `other`) |
+| referral_code       | text, unique       | first 4 letters of the name + 2 random digits, e.g. `ROHA47`; shared as the link `/r/ROHA47`                 |
+| role                | text               | `student` (default) or `mentor`, for `/team` access                                                          |
+| created_at          | timestamptz        |                                                                                                              |
 
 → Phase 2: the web calls `POST /v1/users:upsert` on the app (see §4.1) and stores the returned `app_user_id`.
+
+### pending_sign_ups (web)
+
+Form details between the sign-up form and the OTP check (30 min), plus the `referral_code` used (typed, or remembered for 30 days from a `/r/CODE` link). Pending rows with a code show as "Pending" invites to the referrer.
 
 ### otp_codes, sessions (web)
 

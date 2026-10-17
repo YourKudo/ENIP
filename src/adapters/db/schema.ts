@@ -30,6 +30,8 @@ export const students = pgTable("students", {
   phone: text("phone").notNull().unique(),
   whatsappConsent: boolean("whatsapp_consent").notNull().default(false),
   whatsappConsentAt: timestamp("whatsapp_consent_at", { withTimezone: true }),
+  // "How did you hear about us?" (see src/config/sources.ts).
+  heardFrom: text("heard_from"),
   referralCode: text("referral_code").notNull().unique(),
   role: text("role").notNull().default("student"), // "student" | "mentor"
   createdAt: createdAt(),
@@ -39,6 +41,8 @@ export const students = pgTable("students", {
 export const pendingSignUps = pgTable("pending_sign_ups", {
   email: text("email").primaryKey(),
   details: jsonb("details").notNull(),
+  // Referral code typed or remembered from a link; credited on verification.
+  referralCode: text("referral_code"),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 

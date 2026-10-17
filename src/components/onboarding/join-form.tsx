@@ -8,18 +8,23 @@ import { Field, inputClasses } from "@/components/ui/field";
 import { keepValuesOnSubmit } from "@/components/ui/keep-values";
 
 type IitOption = { id: string; name: string; domain: string };
+type SourceOption = { id: string; label: string };
 
 // Partial onboarding (PRD Step 3): only what's needed to verify a student
-// and reach them on WhatsApp.
+// and reach them on WhatsApp, plus how they found us and who invited them.
 export function JoinForm({
   action,
   iits,
   years,
+  sources,
+  rememberedCode,
   next,
 }: {
   action: (previous: FormState, form: FormData) => Promise<FormState>;
   iits: IitOption[];
   years: number[];
+  sources: readonly SourceOption[];
+  rememberedCode: string | null; // from a referral link opened earlier
   next: string;
 }) {
   const [state, submit, pending] = useActionState(action, null);
@@ -136,6 +141,47 @@ export function JoinForm({
             {...invalid("phone")}
           />
         </div>
+      </Field>
+
+      <Field
+        id="heardFrom"
+        label="How did you hear about ENIP?"
+        error={errors.heardFrom}
+      >
+        <select
+          id="heardFrom"
+          name="heardFrom"
+          defaultValue={values.heardFrom ?? (rememberedCode ? "friend" : "")}
+          className={inputClasses}
+          {...invalid("heardFrom")}
+        >
+          <option value="" disabled>
+            Select one
+          </option>
+          {sources.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field
+        id="referralCode"
+        label="Referral code (optional)"
+        hint="Got a code from a friend? They move up the waitlist when you join."
+        error={errors.referralCode}
+      >
+        <input
+          id="referralCode"
+          name="referralCode"
+          autoCapitalize="characters"
+          autoComplete="off"
+          placeholder="e.g. ROHA47"
+          defaultValue={values.referralCode ?? rememberedCode ?? ""}
+          className={`${inputClasses} uppercase`}
+          {...invalid("referralCode")}
+        />
       </Field>
 
       <label className="card flex cursor-pointer items-start gap-3 p-4">
