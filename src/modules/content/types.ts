@@ -1,8 +1,5 @@
 export type CategorySlug =
-  | "interview-guides"
-  | "resources"
-  | "placement-stories"
-  | "placement-stats";
+  "interview-guides" | "resources" | "placement-stories" | "placement-stats";
 
 export type Category = {
   slug: CategorySlug;
@@ -12,9 +9,7 @@ export type Category = {
 
 // What a student must do to see the full item (FR-03).
 export type Access =
-  | { kind: "free" }
-  | { kind: "signup" }
-  | { kind: "points"; cost: number };
+  { kind: "free" } | { kind: "signup" } | { kind: "points"; cost: number };
 
 export type Block =
   | { type: "text"; text: string }

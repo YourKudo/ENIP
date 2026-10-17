@@ -24,7 +24,10 @@ export function getItemsInCategory(slug: string): ContentView[] {
   return contentItems.filter((i) => i.category === slug).map(toView);
 }
 
-export function getItem(category: string, slug: string): ContentView | undefined {
+export function getItem(
+  category: string,
+  slug: string,
+): ContentView | undefined {
   const item = contentItems.find(
     (i) => i.category === category && i.slug === slug,
   );

@@ -6,17 +6,20 @@ import { mockEnipApp } from "./mock";
 // API plugs in as a second implementation of this interface (http.ts), and
 // ENIP_APP_PROVIDER in .env picks which one is used.
 
+// FR-18: YAL team members and EIRs get their own badge and are never
+// labelled as alumni.
+export type MemberType = "alumni" | "founder" | "yal-team" | "eir";
+
 export type AlumniProfile = {
   id: string;
   name: string;
   institute: string;
   branch: string;
   batch: number;
-  role: string;
+  jobTitle: string;
   company: string;
   topics: string[];
-  // FR-18: ENIP team mentors must be labelled, never shown as alumni.
-  isEnipTeam: boolean;
+  memberType: MemberType;
 };
 
 export interface EnipApp {

@@ -1,73 +1,61 @@
 import Link from "next/link";
-import { BadgeCheck, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 
 import type { AlumniProfile } from "@/adapters/enip-app";
 import { routes } from "@/lib/routes";
 import type { ContentView } from "@/modules/content";
 import { ButtonLink } from "./button-link";
 import { AccessBadge } from "./locked";
+import { Avatar } from "./ui/avatar";
+import { MemberBadge } from "./ui/badge";
+import { TagChips } from "./ui/tag-chips";
 
 export function ContentCard({ item }: { item: ContentView }) {
   return (
     <Link
       href={routes.content(item.category, item.slug)}
-      className="flex flex-col rounded-xl border border-slate-200 bg-white p-5 transition-shadow hover:shadow-md"
+      className="card flex flex-col transition-shadow duration-200 hover:shadow-lg"
     >
-      <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
-        <span>{item.minutes} min read</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-meta">{item.minutes} min read</span>
         <AccessBadge access={item.access} />
       </div>
-      <h3 className="mt-3 font-semibold leading-snug">{item.title}</h3>
-      <p className="mt-1 text-sm text-slate-600">{item.summary}</p>
-      <p className="mt-4 text-xs text-slate-500">
+      <h3 className="text-ink mt-3 text-lg leading-snug font-bold">
+        {item.title}
+      </h3>
+      <p className="text-body mt-1">{item.summary}</p>
+      <p className="text-meta mt-4">
         {item.author.name} · {item.author.tag}
       </p>
     </Link>
   );
 }
 
+// "Match card" from the design spec: avatar, badge, name, role, 3 tags.
 export function AlumniCard({ person }: { person: AlumniProfile }) {
-  const initials = person.name
-    .split(" ")
-    .map((part) => part[0])
-    .join("");
   return (
-    <div className="flex flex-col rounded-xl border border-slate-200 bg-white p-5">
-      <div className="flex items-center gap-3">
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-100 font-semibold text-brand-700">
-          {initials}
-        </div>
-        <div className="min-w-0">
-          <p className="flex items-center gap-1 font-semibold">
-            {person.name}
-            {person.isEnipTeam && (
-              <BadgeCheck className="size-4 text-brand-600" aria-hidden />
-            )}
-          </p>
-          <p className="truncate text-sm text-slate-600">
-            {person.role} · {person.company}
-          </p>
-        </div>
+    <div className="card border-line-strong flex flex-col border">
+      <div className="flex items-start justify-between gap-3">
+        <Avatar name={person.name} />
+        <MemberBadge type={person.memberType} />
       </div>
-      <p className="mt-3 text-xs text-slate-500">
-        {person.isEnipTeam
-          ? "ENIP team mentor"
-          : `${person.institute} · ${person.branch} '${String(person.batch).slice(2)}`}
+      <p className="text-card-title mt-4">{person.name}</p>
+      <p className="mt-1">
+        <span className="text-primary font-semibold">
+          {person.jobTitle} @ {person.company}
+        </span>
       </p>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {person.topics.map((topic) => (
-          <span
-            key={topic}
-            className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
-          >
-            {topic}
-          </span>
-        ))}
+      <p className="text-meta mt-1">
+        {person.institute} · {person.branch} &apos;
+        {String(person.batch).slice(2)}
+      </p>
+      <div className="mt-4 flex-1">
+        <TagChips tags={person.topics} />
       </div>
-      <div className="mt-4">
-        <ButtonLink href={routes.join(routes.alumni)} variant="secondary">
-          <MessageCircle className="size-4" aria-hidden />
-          Message
+      <div className="mt-5">
+        <ButtonLink href={routes.join(routes.alumni)} fullWidth>
+          <MessageCircle className="size-5" aria-hidden />
+          Start conversation
         </ButtonLink>
       </div>
     </div>

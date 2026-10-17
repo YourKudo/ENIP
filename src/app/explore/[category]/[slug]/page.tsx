@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { AccessBadge, LockedSection } from "@/components/locked";
+import { AccessBadge, BlurLock } from "@/components/locked";
 import { routes } from "@/lib/routes";
 import {
   getAllItemPaths,
@@ -33,15 +33,15 @@ export default async function ContentPage({
   const here = routes.content(categorySlug, slug);
 
   return (
-    <article className="mx-auto max-w-3xl px-4 py-12">
+    <article className="mx-auto max-w-3xl px-6 py-10">
       <Link
         href={routes.category(categorySlug)}
-        className="text-sm font-semibold text-brand-700 hover:underline"
+        className="text-primary font-semibold hover:underline"
       >
         ← {category.title}
       </Link>
-      <h1 className="mt-4 text-3xl font-bold leading-tight">{item.title}</h1>
-      <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+      <h1 className="text-title mt-4">{item.title}</h1>
+      <div className="text-meta mt-3 flex flex-wrap items-center gap-3">
         <span>
           {item.author.name} · {item.author.tag}
         </span>
@@ -53,7 +53,7 @@ export default async function ContentPage({
       {item.body ? (
         <Blocks blocks={item.body} />
       ) : (
-        <LockedSection
+        <BlurLock
           access={item.access}
           hiddenCount={item.lockedBlockCount}
           returnTo={here}
@@ -70,16 +70,16 @@ function Blocks({ blocks }: { blocks: Block[] }) {
   return (
     <div className="mt-6 space-y-4">
       {texts.map((b) => (
-        <p key={b.text} className="leading-relaxed text-slate-700">
+        <p key={b.text} className="text-body leading-relaxed">
           {b.text}
         </p>
       ))}
       {stats.length > 0 && (
         <dl className="grid grid-cols-2 gap-3">
           {stats.map((b) => (
-            <div key={b.label} className="rounded-xl border border-slate-200 p-4">
-              <dt className="text-sm text-slate-500">{b.label}</dt>
-              <dd className="mt-1 text-2xl font-bold">{b.value}</dd>
+            <div key={b.label} className="card">
+              <dt className="text-meta">{b.label}</dt>
+              <dd className="text-title mt-1">{b.value}</dd>
             </div>
           ))}
         </dl>

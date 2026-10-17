@@ -3,24 +3,26 @@ import Link from "next/link";
 type Variant = "primary" | "secondary";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700",
+  primary: "bg-primary text-white shadow-card hover:bg-primary-dark",
   secondary:
-    "border border-slate-300 bg-white text-slate-900 hover:border-slate-400",
+    "border-[1.5px] border-primary bg-surface text-subtle hover:bg-chip [&_svg]:text-primary",
 };
 
 export function ButtonLink({
   href,
   variant = "primary",
+  fullWidth = false,
   children,
 }: {
   href: string;
   variant?: Variant;
+  fullWidth?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${variants[variant]}`}
+      className={`rounded-button inline-flex h-[52px] items-center justify-center gap-2 px-5 text-base font-semibold transition-colors duration-200 ${variants[variant]} ${fullWidth ? "w-full" : ""}`}
     >
       {children}
     </Link>

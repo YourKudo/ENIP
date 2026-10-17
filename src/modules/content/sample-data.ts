@@ -64,7 +64,8 @@ export const contentItems: ContentItem[] = [
     slug: "quant-probability-puzzles",
     category: "interview-guides",
     title: "Quant & trading rounds: probability puzzles to know",
-    summary: "The 20 puzzles that keep coming back, with how to think out loud.",
+    summary:
+      "The 20 puzzles that keep coming back, with how to think out loud.",
     author: { name: "Ananya Iyer", tag: "IIT Bombay '23 · Quant Researcher" },
     minutes: 12,
     access: { kind: "points", cost: 20 },
@@ -75,7 +76,10 @@ export const contentItems: ContentItem[] = [
       },
     ],
     body: [
-      { type: "text", text: "Puzzle 1: expected tosses to get two heads in a row." },
+      {
+        type: "text",
+        text: "Puzzle 1: expected tosses to get two heads in a row.",
+      },
       { type: "text", text: "Puzzle 2: the broken stick and the triangle." },
       { type: "text", text: "Puzzle 3: optimal stopping with a die." },
     ],
@@ -158,8 +162,14 @@ export const contentItems: ContentItem[] = [
       },
     ],
     body: [
-      { type: "text", text: "How I picked projects that interviewers asked about." },
-      { type: "text", text: "How I asked for referrals without being awkward." },
+      {
+        type: "text",
+        text: "How I picked projects that interviewers asked about.",
+      },
+      {
+        type: "text",
+        text: "How I asked for referrals without being awkward.",
+      },
     ],
   },
   {

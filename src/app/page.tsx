@@ -28,10 +28,16 @@ const categoryIcons: Record<CategorySlug, typeof BookOpen> = {
 };
 
 const steps = [
-  { title: "Explore", text: "Browse guides, stories and stats. No sign-up needed." },
+  {
+    title: "Explore",
+    text: "Browse guides, stories and stats. No sign-up needed.",
+  },
   { title: "Verify", text: "Confirm your IIT email with a one-time code." },
   { title: "Chat", text: "Message a senior. Your first conversation is free." },
-  { title: "Refer", text: "Invite friends to skip the waitlist and earn points." },
+  {
+    title: "Refer",
+    text: "Invite friends to skip the waitlist and earn points.",
+  },
 ];
 
 export default async function HomePage() {
@@ -39,48 +45,53 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className="bg-gradient-to-b from-brand-50 to-white">
-        <div className="mx-auto max-w-6xl px-4 pt-14 pb-12 md:pt-20">
-          <p className="text-sm font-semibold text-brand-700">
-            For 3rd and 4th year IIT students
+      <section className="from-banner to-bg bg-gradient-to-b">
+        <div className="mx-auto max-w-6xl px-6 pt-12 pb-10 md:pt-20">
+          <p className="text-eyebrow">
+            ENIP by YAL · For 3rd & 4th year IITians
           </p>
-          <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight md:text-5xl">
+          <h1 className="text-title mt-2 max-w-2xl md:text-5xl">
             Talk to IIT seniors who&apos;ve been where you&apos;re headed.
           </h1>
-          <p className="mt-4 max-w-2xl text-lg text-slate-600">
-            Placement and internship guidance, interview prep and CV reviews from
-            alumni at the companies you&apos;re aiming for.
+          <p className="text-body mt-4 max-w-2xl">
+            Placement and internship guidance, interview prep and CV reviews
+            from alumni at the companies you&apos;re aiming for.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <ButtonLink href={routes.alumni}>
-              <MessageCircle className="size-4" aria-hidden />
+              <MessageCircle className="size-5" aria-hidden />
               Start a free chat
             </ButtonLink>
-            <ButtonLink href={routes.category("interview-guides")} variant="secondary">
+            <ButtonLink
+              href={routes.category("interview-guides")}
+              variant="secondary"
+            >
               Explore resources
             </ButtonLink>
           </div>
-          <dl className="mt-10 flex flex-wrap gap-x-10 gap-y-4">
+          <dl className="mt-10 grid max-w-md grid-cols-3 gap-3">
             {getPlatformStats().map((stat) => (
-              <div key={stat.label}>
-                <dt className="text-sm text-slate-500">{stat.label}</dt>
-                <dd className="text-2xl font-bold">{stat.value}</dd>
+              <div
+                key={stat.label}
+                className="card flex flex-col-reverse px-4 py-3"
+              >
+                <dt className="text-meta">{stat.label}</dt>
+                <dd className="text-ink text-xl font-bold">{stat.value}</dd>
               </div>
             ))}
           </dl>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-12">
-        <h2 className="text-2xl font-bold">Explore before you sign up</h2>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Section eyebrow="Free previews" title="Explore before you sign up">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
           {getCategories().map((category) => {
             const Icon = categoryIcons[category.slug];
             return (
               <CategoryTile
                 key={category.slug}
                 href={routes.category(category.slug)}
-                icon={<Icon className="size-5" aria-hidden />}
+                icon={<Icon className="size-6" aria-hidden />}
                 title={category.title}
                 blurb={category.blurb}
               />
@@ -88,77 +99,105 @@ export default async function HomePage() {
           })}
           <CategoryTile
             href={routes.cvReview}
-            icon={<FileCheck2 className="size-5" aria-hidden />}
+            icon={<FileCheck2 className="size-6" aria-hidden />}
             title="CV score & review"
             blurb="Get your CV scored and reviewed by a senior in your field."
           />
           <CategoryTile
             href={routes.alumni}
-            icon={<MessageCircle className="size-5" aria-hidden />}
+            icon={<MessageCircle className="size-6" aria-hidden />}
             title="Alumni chat"
             blurb="Ask seniors about roles, companies and preparation."
           />
         </div>
-      </section>
+      </Section>
 
-      <section className="bg-slate-50">
-        <div className="mx-auto max-w-6xl px-4 py-12">
-          <div className="flex items-end justify-between gap-4">
-            <h2 className="text-2xl font-bold">Seniors you can talk to</h2>
-            <Link
-              href={routes.alumni}
-              className="text-sm font-semibold text-brand-700 hover:underline"
-            >
-              See all
-            </Link>
-          </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {alumni.map((person) => (
-              <AlumniCard key={person.id} person={person} />
-            ))}
-          </div>
+      <Section
+        eyebrow="Top matches today"
+        title="Seniors you can talk to"
+        action={
+          <Link
+            href={routes.alumni}
+            className="text-primary shrink-0 font-semibold whitespace-nowrap hover:underline"
+          >
+            See all
+          </Link>
+        }
+      >
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {alumni.map((person) => (
+            <AlumniCard key={person.id} person={person} />
+          ))}
         </div>
-      </section>
+      </Section>
 
-      <section className="mx-auto max-w-6xl px-4 py-12">
-        <h2 className="text-2xl font-bold">How it works</h2>
-        <ol className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <Section eyebrow="How it works" title="From curious to connected">
+        <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((step, i) => (
-            <li key={step.title} className="rounded-xl border border-slate-200 p-5">
-              <span className="text-sm font-semibold text-brand-600">Step {i + 1}</span>
-              <p className="mt-1 font-semibold">{step.title}</p>
-              <p className="mt-1 text-sm text-slate-600">{step.text}</p>
+            <li key={step.title} className="card">
+              <span className="bg-chip text-primary flex size-8 items-center justify-center rounded-full text-sm font-bold">
+                {i + 1}
+              </span>
+              <p className="text-ink mt-3 font-bold">{step.title}</p>
+              <p className="text-meta mt-1">{step.text}</p>
             </li>
           ))}
         </ol>
-      </section>
+      </Section>
 
-      <section className="bg-slate-50">
-        <div className="mx-auto max-w-6xl px-4 py-12">
-          <h2 className="text-2xl font-bold">What students say</h2>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            {getTestimonials().map((t) => (
-              <figure key={t.name} className="rounded-xl border border-slate-200 bg-white p-5">
-                <blockquote className="text-slate-700">“{t.quote}”</blockquote>
-                <figcaption className="mt-3 text-sm text-slate-500">
-                  {t.name} · {t.tag}
-                </figcaption>
-              </figure>
-            ))}
+      <Section eyebrow="Testimonials" title="What students say">
+        <div className="grid gap-4 md:grid-cols-3">
+          {getTestimonials().map((t) => (
+            <figure key={t.name} className="card">
+              <blockquote className="text-body">“{t.quote}”</blockquote>
+              <figcaption className="text-meta mt-3">
+                <span className="text-ink font-semibold">{t.name}</span> ·{" "}
+                {t.tag}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </Section>
+
+      <section className="mx-auto max-w-6xl px-6 pt-4 pb-16">
+        <div className="card from-banner to-surface bg-gradient-to-b py-10 text-center">
+          <h2 className="text-title">Your first chat with a senior is free</h2>
+          <p className="text-body mt-2">
+            Verify your IIT email to get started.
+          </p>
+          <div className="mt-6">
+            <ButtonLink href={routes.join()}>
+              Join free <ArrowRight className="size-5" aria-hidden />
+            </ButtonLink>
           </div>
         </div>
       </section>
-
-      <section className="mx-auto max-w-6xl px-4 py-14 text-center">
-        <h2 className="text-2xl font-bold">Your first chat with a senior is free</h2>
-        <p className="mt-2 text-slate-600">Verify your IIT email to get started.</p>
-        <div className="mt-6">
-          <ButtonLink href={routes.join()}>
-            Join free <ArrowRight className="size-4" aria-hidden />
-          </ButtonLink>
-        </div>
-      </section>
     </>
+  );
+}
+
+function Section({
+  eyebrow,
+  title,
+  action,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <div>
+          <p className="text-eyebrow">{eyebrow}</p>
+          <h2 className="text-title mt-1">{title}</h2>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -176,13 +215,15 @@ function CategoryTile({
   return (
     <Link
       href={href}
-      className="group rounded-xl border border-slate-200 bg-white p-5 transition-shadow hover:shadow-md"
+      className="card group flex flex-col transition-shadow duration-200 hover:shadow-lg"
     >
-      <span className="inline-flex size-10 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+      <span className="bg-chip text-primary flex size-12 items-center justify-center rounded-2xl">
         {icon}
       </span>
-      <p className="mt-3 font-semibold group-hover:text-brand-700">{title}</p>
-      <p className="mt-1 text-sm text-slate-600">{blurb}</p>
+      <p className="text-ink group-hover:text-primary mt-3 leading-snug font-bold">
+        {title}
+      </p>
+      <p className="text-meta mt-1 hidden sm:block">{blurb}</p>
     </Link>
   );
 }

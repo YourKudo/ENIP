@@ -12,14 +12,21 @@ const nav = [
 
 export function SiteHeader() {
   return (
-    <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
-        <Link href={routes.home} className="text-xl font-bold tracking-tight">
+    <header className="border-line bg-bg/90 border-b backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-6">
+        <Link
+          href={routes.home}
+          className="text-primary text-2xl font-bold tracking-tight"
+        >
           ENIP
         </Link>
-        <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
+        <nav className="text-muted hidden items-center gap-6 text-sm font-medium md:flex">
           {nav.map((item) => (
-            <Link key={item.href} href={item.href} className="hover:text-slate-900">
+            <Link
+              key={item.href}
+              href={item.href}
+              className="hover:text-primary"
+            >
               {item.label}
             </Link>
           ))}
