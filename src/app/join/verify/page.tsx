@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { usesDevInbox } from "@/adapters/email";
 import { OtpForm } from "@/components/onboarding/otp-form";
 import { PageSkeleton } from "@/components/page-skeleton";
 import { BackButton } from "@/components/ui/back-button";
@@ -38,7 +39,7 @@ async function Verify({ searchParams }: PageProps<"/join/verify">) {
         <span className="text-ink font-semibold">{maskedEmail}</span>.
       </p>
       <OtpForm action={verifyAction.bind(null, next)} resend={resendAction} />
-      {process.env.NODE_ENV !== "production" && (
+      {process.env.NODE_ENV !== "production" && usesDevInbox && (
         <p className="bg-chip text-primary mt-8 rounded-2xl px-4 py-3 text-center text-sm">
           Testing? No real email is sent yet.{" "}
           <Link

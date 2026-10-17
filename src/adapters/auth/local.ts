@@ -73,11 +73,22 @@ export const localAuth: AuthProvider = {
       attempts: 0,
       sentAt: [...recentSends, now],
     });
-    await email.send({
-      to: address,
-      subject: "Your ENIP verification code",
-      text: `Your code is ${code}. It expires in 10 minutes.`,
-    });
+    try {
+      await email.send({
+        to: address,
+        subject: "Your ENIP verification code",
+        text: `Your code is ${code}. It expires in 10 minutes.`,
+      });
+    } catch (error) {
+      // Undo this attempt so the student can retry straight away.
+      if (previous) state.codes.set(address, previous);
+      else state.codes.delete(address);
+      console.error("[email] sending the verification code failed:", error);
+      return {
+        ok: false,
+        error: "We couldn't send the email right now. Please try again.",
+      };
+    }
     return { ok: true };
   },
 
