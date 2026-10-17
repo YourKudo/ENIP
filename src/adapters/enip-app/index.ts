@@ -12,7 +12,11 @@ export type MemberType = "alumni" | "founder" | "yal-team" | "eir";
 
 export type AlumniProfile = {
   id: string;
-  name: string;
+  // The app decides what to show: the real name or the member's chosen
+  // username, per their privacy setting. The website just displays it.
+  displayName: string;
+  // Profile photo or the avatar the member picked in the app; null = none.
+  avatarUrl: string | null;
   institute: string;
   branch: string;
   batch: number;
@@ -22,8 +26,27 @@ export type AlumniProfile = {
   memberType: MemberType;
 };
 
+// Messages live in the app's database: the student writes from the web and
+// the senior replies from the app.
+export type ChatMessage = {
+  id: string;
+  from: "student" | "senior";
+  kind: "text" | "cv"; // for "cv", text is the file name
+  text: string;
+  sentAt: string; // ISO timestamp
+};
+
+export type NewMessage = Pick<ChatMessage, "kind" | "text">;
+
 export interface EnipApp {
   listAlumni(): Promise<AlumniProfile[]>;
+  getAlumni(id: string): Promise<AlumniProfile | null>;
+  listMessages(studentId: string, alumniId: string): Promise<ChatMessage[]>;
+  sendMessage(
+    studentId: string,
+    alumniId: string,
+    message: NewMessage,
+  ): Promise<ChatMessage>;
 }
 
 export const enipApp: EnipApp = mockEnipApp;

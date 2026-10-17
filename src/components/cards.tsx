@@ -36,10 +36,10 @@ export function AlumniCard({ person }: { person: AlumniProfile }) {
   return (
     <div className="card border-line-strong flex flex-col border">
       <div className="flex items-start justify-between gap-3">
-        <Avatar name={person.name} />
+        <Avatar name={person.displayName} imageUrl={person.avatarUrl} />
         <MemberBadge type={person.memberType} />
       </div>
-      <p className="text-card-title mt-4">{person.name}</p>
+      <p className="text-card-title mt-4">{person.displayName}</p>
       <p className="mt-1">
         <span className="text-primary font-semibold">
           {person.jobTitle} @ {person.company}
@@ -53,7 +53,7 @@ export function AlumniCard({ person }: { person: AlumniProfile }) {
         <TagChips tags={person.topics} />
       </div>
       <div className="mt-5">
-        <ButtonLink href={routes.join(routes.alumni)} fullWidth>
+        <ButtonLink href={routes.chat(person.id)} fullWidth>
           <MessageCircle className="size-5" aria-hidden />
           Start conversation
         </ButtonLink>

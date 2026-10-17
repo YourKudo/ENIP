@@ -1,0 +1,15 @@
+Start the site (then open http://localhost:3000):
+
+npm run dev
+Check everything before you commit (types, lint, formatting):
+
+npm run check
+Auto-format every file:
+
+npm run format
+Make sure it would deploy:
+
+npm run build
+See what you’ve changed:
+
+git status
