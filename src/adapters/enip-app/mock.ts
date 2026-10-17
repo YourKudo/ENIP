@@ -1,0 +1,68 @@
+// SAMPLE DATA ONLY: made-up people for the demo, used until the app
+// backend is connected.
+
+import type { AlumniProfile, EnipApp } from "./index";
+
+const alumni: AlumniProfile[] = [
+  {
+    id: "a1",
+    name: "Rohan Mehta",
+    institute: "IIT Kharagpur",
+    branch: "CSE",
+    batch: 2024,
+    role: "Software Engineer",
+    company: "Fintech startup",
+    topics: ["SDE prep", "Resume", "Startups"],
+    isEnipTeam: false,
+  },
+  {
+    id: "a2",
+    name: "Ananya Iyer",
+    institute: "IIT Bombay",
+    branch: "Mathematics",
+    batch: 2023,
+    role: "Quant Researcher",
+    company: "Trading firm",
+    topics: ["Quant", "Probability", "Internships"],
+    isEnipTeam: false,
+  },
+  {
+    id: "a3",
+    name: "Kabir Shah",
+    institute: "IIT Delhi",
+    branch: "Mechanical",
+    batch: 2022,
+    role: "Product Manager",
+    company: "Consumer tech",
+    topics: ["Product", "Core to tech", "Case rounds"],
+    isEnipTeam: false,
+  },
+  {
+    id: "a4",
+    name: "Meera Nair",
+    institute: "IIT Madras",
+    branch: "Civil",
+    batch: 2023,
+    role: "Software Engineer",
+    company: "SaaS company",
+    topics: ["Branch switch", "DSA", "Projects"],
+    isEnipTeam: false,
+  },
+  {
+    id: "t1",
+    name: "Priya Rao",
+    institute: "IIT Roorkee",
+    branch: "Electrical",
+    batch: 2021,
+    role: "Career mentor",
+    company: "ENIP",
+    topics: ["CV review", "Placement strategy"],
+    isEnipTeam: true,
+  },
+];
+
+export const mockEnipApp: EnipApp = {
+  async listAlumni() {
+    return alumni;
+  },
+};
