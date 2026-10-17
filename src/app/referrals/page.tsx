@@ -11,7 +11,7 @@ export default function ReferralsPage() {
     <ComingSoon
       title="Refer friends"
       description="Share your link or code. Each friend who verifies their IIT email moves you up the waitlist and earns you points."
-      backHref={routes.alumni}
+      backHref={routes.search()}
     />
   );
 }

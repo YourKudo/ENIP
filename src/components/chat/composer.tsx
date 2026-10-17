@@ -69,7 +69,9 @@ export function Composer({
           value={text}
           onChange={(e) => setText(e.target.value)}
           disabled={locked}
-          placeholder={disabled ? "Free messages used" : "Write a message…"}
+          placeholder={
+            disabled ? "Unlock to keep chatting" : "Write a message…"
+          }
           aria-label="Message"
           className="bg-surface shadow-card text-body h-14 min-w-0 flex-1 rounded-3xl px-5 outline-none disabled:opacity-60"
         />

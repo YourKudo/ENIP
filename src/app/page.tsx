@@ -1,21 +1,21 @@
 import Link from "next/link";
 import {
-  ArrowRight,
   BarChart3,
   BookOpen,
   FileCheck2,
   FolderOpen,
-  MessageCircle,
+  Search,
+  ShieldCheck,
   Trophy,
+  Users,
 } from "lucide-react";
 
-import { enipApp } from "@/adapters/enip-app";
 import { ButtonLink } from "@/components/button-link";
-import { AlumniCard } from "@/components/cards";
+import { PromptChips, SearchBar } from "@/components/search-bar";
+import { examplePrompts, searchIntents } from "@/config/search";
 import { routes } from "@/lib/routes";
 import {
   getCategories,
-  getPlatformStats,
   getTestimonials,
   type CategorySlug,
 } from "@/modules/content";
@@ -27,122 +27,95 @@ const categoryIcons: Record<CategorySlug, typeof BookOpen> = {
   "placement-stats": BarChart3,
 };
 
-const steps = [
-  {
-    title: "Explore",
-    text: "Browse guides, stories and stats. No sign-up needed.",
-  },
-  { title: "Verify", text: "Confirm your IIT email with a one-time code." },
-  { title: "Chat", text: "Message a senior. Your first conversation is free." },
-  {
-    title: "Refer",
-    text: "Invite friends to skip the waitlist and earn points.",
-  },
-];
-
-export default async function HomePage() {
-  const alumni = (await enipApp.listAlumni()).slice(0, 3);
-
+export default function HomePage() {
   return (
     <>
+      {/* 1. Search with intent: the main focus of the page. */}
       <section className="from-banner to-bg bg-gradient-to-b">
-        <div className="mx-auto max-w-6xl px-6 pt-12 pb-10 md:pt-20">
-          <p className="text-eyebrow">
-            ENIP by YAL · For 3rd & 4th year IITians
-          </p>
-          <h1 className="text-title mt-2 max-w-2xl md:text-5xl">
-            Talk to IIT seniors who&apos;ve been where you&apos;re headed.
+        <div className="mx-auto max-w-3xl px-6 pt-12 pb-10 md:pt-20">
+          <p className="text-eyebrow">ENIP by YAL</p>
+          <h1 className="text-title mt-2 md:text-5xl">
+            Find the right person. Ask anything.
           </h1>
-          <p className="text-body mt-4 max-w-2xl">
-            Placement and internship guidance, interview prep and CV reviews
-            from alumni at the companies you&apos;re aiming for.
+          <p className="text-body mt-3">
+            An anonymous network exclusively for IITians.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href={routes.alumni}>
-              <MessageCircle className="size-5" aria-hidden />
-              Start a free chat
-            </ButtonLink>
-            <ButtonLink
-              href={routes.category("interview-guides")}
-              variant="secondary"
-            >
-              Explore resources
-            </ButtonLink>
+          <div className="mt-8">
+            <SearchBar />
           </div>
-          <dl className="mt-10 grid max-w-md grid-cols-3 gap-3">
-            {getPlatformStats().map((stat) => (
-              <div
-                key={stat.label}
-                className="card flex flex-col-reverse px-4 py-3"
-              >
-                <dt className="text-meta">{stat.label}</dt>
-                <dd className="text-ink text-xl font-bold">{stat.value}</dd>
-              </div>
-            ))}
-          </dl>
+          <div className="mt-4">
+            <PromptChips prompts={examplePrompts} />
+          </div>
         </div>
       </section>
 
-      <Section eyebrow="Free previews" title="Explore before you sign up">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+      {/* 2. What you can do here: each card fills the search. */}
+      <Section eyebrow="What you can do here" title="Start with what you need">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {searchIntents.map(({ label, query, icon: Icon }) => (
+            <Link
+              key={label}
+              href={routes.search(query)}
+              className="card flex items-center gap-3 p-4 transition-shadow duration-200 hover:shadow-lg"
+            >
+              <span className="bg-chip text-primary flex size-10 shrink-0 items-center justify-center rounded-xl">
+                <Icon className="size-5" aria-hidden />
+              </span>
+              <span className="text-ink text-sm leading-snug font-semibold">
+                {label}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </Section>
+
+      {/* Two ways in. Same short form either way; only where you land
+          afterwards differs (the chat, or the waitlist). */}
+      <Section eyebrow="Two ways in" title="Try it, or join the network">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <PathCard
+            icon={<Search className="size-5" aria-hidden />}
+            title="Try it now"
+            text="Search, open profiles and send your first message free. We'll ask for a few details when you start a chat."
+            cta={
+              <ButtonLink href={routes.search()} fullWidth>
+                Find someone
+              </ButtonLink>
+            }
+          />
+          <PathCard
+            icon={<Users className="size-5" aria-hidden />}
+            title="Join the network"
+            text="Get on the waitlist for full access. Refer IITian friends to move up and earn points."
+            cta={
+              <ButtonLink href={routes.join()} variant="secondary" fullWidth>
+                Join the waitlist
+              </ButtonLink>
+            }
+          />
+        </div>
+      </Section>
+
+      {/* Free content library (PRD curiosity points). */}
+      <Section eyebrow="Free previews" title="Guides, stories and stats">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {getCategories().map((category) => {
             const Icon = categoryIcons[category.slug];
             return (
-              <CategoryTile
+              <LibraryTile
                 key={category.slug}
                 href={routes.category(category.slug)}
-                icon={<Icon className="size-6" aria-hidden />}
+                icon={<Icon className="size-5" aria-hidden />}
                 title={category.title}
-                blurb={category.blurb}
               />
             );
           })}
-          <CategoryTile
+          <LibraryTile
             href={routes.cvReview}
-            icon={<FileCheck2 className="size-6" aria-hidden />}
+            icon={<FileCheck2 className="size-5" aria-hidden />}
             title="CV score & review"
-            blurb="Get your CV scored and reviewed by a senior in your field."
-          />
-          <CategoryTile
-            href={routes.alumni}
-            icon={<MessageCircle className="size-6" aria-hidden />}
-            title="Alumni chat"
-            blurb="Ask seniors about roles, companies and preparation."
           />
         </div>
-      </Section>
-
-      <Section
-        eyebrow="Top matches today"
-        title="Seniors you can talk to"
-        action={
-          <Link
-            href={routes.alumni}
-            className="text-primary shrink-0 font-semibold whitespace-nowrap hover:underline"
-          >
-            See all
-          </Link>
-        }
-      >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {alumni.map((person) => (
-            <AlumniCard key={person.id} person={person} />
-          ))}
-        </div>
-      </Section>
-
-      <Section eyebrow="How it works" title="From curious to connected">
-        <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {steps.map((step, i) => (
-            <li key={step.title} className="card">
-              <span className="bg-chip text-primary flex size-8 items-center justify-center rounded-full text-sm font-bold">
-                {i + 1}
-              </span>
-              <p className="text-ink mt-3 font-bold">{step.title}</p>
-              <p className="text-meta mt-1">{step.text}</p>
-            </li>
-          ))}
-        </ol>
       </Section>
 
       <Section eyebrow="Testimonials" title="What students say">
@@ -159,19 +132,11 @@ export default async function HomePage() {
         </div>
       </Section>
 
-      <section className="mx-auto max-w-6xl px-6 pt-4 pb-16">
-        <div className="card from-banner to-surface bg-gradient-to-b py-10 text-center">
-          <h2 className="text-title">Your first chat with a senior is free</h2>
-          <p className="text-body mt-2">
-            Verify your IIT email to get started.
-          </p>
-          <div className="mt-6">
-            <ButtonLink href={routes.join()}>
-              Join free <ArrowRight className="size-5" aria-hidden />
-            </ButtonLink>
-          </div>
-        </div>
-      </section>
+      {/* 3. Trust and exclusivity. */}
+      <p className="text-meta mx-auto flex max-w-3xl items-center justify-center gap-2 px-6 pt-2 pb-12 text-center">
+        <ShieldCheck className="text-primary size-4 shrink-0" aria-hidden />
+        Built exclusively for IITians. Anonymous by default.
+      </p>
     </>
   );
 }
@@ -179,51 +144,64 @@ export default async function HomePage() {
 function Section({
   eyebrow,
   title,
-  action,
   children,
 }: {
   eyebrow: string;
   title: string;
-  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <section className="mx-auto max-w-6xl px-6 py-8">
-      <div className="mb-5 flex items-end justify-between gap-4">
-        <div>
-          <p className="text-eyebrow">{eyebrow}</p>
-          <h2 className="text-title mt-1">{title}</h2>
-        </div>
-        {action}
-      </div>
+    <section className="mx-auto max-w-3xl px-6 py-7">
+      <p className="text-eyebrow">{eyebrow}</p>
+      <h2 className="text-title mt-1 mb-5">{title}</h2>
       {children}
     </section>
   );
 }
 
-function CategoryTile({
+function PathCard({
+  icon,
+  title,
+  text,
+  cta,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  text: string;
+  cta: React.ReactNode;
+}) {
+  return (
+    <div className="card flex flex-col">
+      <span className="bg-chip text-primary flex size-10 items-center justify-center rounded-xl">
+        {icon}
+      </span>
+      <p className="text-card-title mt-3">{title}</p>
+      <p className="text-meta mt-1 flex-1">{text}</p>
+      <div className="mt-4">{cta}</div>
+    </div>
+  );
+}
+
+function LibraryTile({
   href,
   icon,
   title,
-  blurb,
 }: {
   href: string;
   icon: React.ReactNode;
   title: string;
-  blurb: string;
 }) {
   return (
     <Link
       href={href}
-      className="card group flex flex-col transition-shadow duration-200 hover:shadow-lg"
+      className="card group flex flex-col gap-3 p-4 transition-shadow duration-200 hover:shadow-lg"
     >
-      <span className="bg-chip text-primary flex size-12 items-center justify-center rounded-2xl">
+      <span className="bg-chip text-primary flex size-10 items-center justify-center rounded-xl">
         {icon}
       </span>
-      <p className="text-ink group-hover:text-primary mt-3 leading-snug font-bold">
+      <span className="text-ink group-hover:text-primary text-sm leading-snug font-semibold">
         {title}
-      </p>
-      <p className="text-meta mt-1 hidden sm:block">{blurb}</p>
+      </span>
     </Link>
   );
 }

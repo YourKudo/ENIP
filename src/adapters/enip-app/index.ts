@@ -22,6 +22,8 @@ export type AlumniProfile = {
   batch: number;
   jobTitle: string;
   company: string;
+  // One line on how they can help, written by the member in the app.
+  helpWith: string;
   topics: string[];
   memberType: MemberType;
 };
@@ -39,8 +41,12 @@ export type ChatMessage = {
 export type NewMessage = Pick<ChatMessage, "kind" | "text">;
 
 export interface EnipApp {
-  listAlumni(): Promise<AlumniProfile[]>;
+  // Ranked by relevance to a free-text intent ("someone to review my CV").
+  // Empty query = everyone. The app's own AI matching powers the real one.
+  searchAlumni(query: string): Promise<AlumniProfile[]>;
   getAlumni(id: string): Promise<AlumniProfile | null>;
+  // Alumni the student already has a conversation with.
+  listChatPartners(studentId: string): Promise<string[]>;
   listMessages(studentId: string, alumniId: string): Promise<ChatMessage[]>;
   sendMessage(
     studentId: string,

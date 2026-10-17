@@ -4,7 +4,7 @@ import { routes } from "@/lib/routes";
 import { ButtonLink } from "./button-link";
 
 const nav = [
-  { href: routes.alumni, label: "Alumni" },
+  { href: routes.search(), label: "Find people" },
   { href: routes.category("interview-guides"), label: "Interview guides" },
   { href: routes.category("resources"), label: "Resources" },
   { href: routes.cvReview, label: "CV review" },
@@ -31,7 +31,7 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
-        <ButtonLink href={routes.join()}>Join free</ButtonLink>
+        <ButtonLink href={routes.join()}>Join</ButtonLink>
       </div>
     </header>
   );

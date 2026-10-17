@@ -1,11 +1,18 @@
-// 96px lavender rounded square. Shows the photo or avatar the member set in
-// the app; falls back to initials when they have none.
+const sizes = {
+  md: "size-14 text-xl rounded-2xl",
+  lg: "size-24 text-3xl rounded-avatar",
+};
+
+// Lavender rounded square. Shows the photo or avatar the member set in the
+// app; falls back to initials when they have none.
 export function Avatar({
   name,
   imageUrl,
+  size = "lg",
 }: {
   name: string;
   imageUrl: string | null;
+  size?: keyof typeof sizes;
 }) {
   if (imageUrl) {
     return (
@@ -15,13 +22,13 @@ export function Avatar({
       <img
         src={imageUrl}
         alt=""
-        className="rounded-avatar bg-avatar size-24 shrink-0 object-cover"
+        className={`bg-avatar shrink-0 object-cover ${sizes[size]}`}
       />
     );
   }
   return (
     <div
-      className="rounded-avatar bg-avatar text-primary-dark flex size-24 shrink-0 items-center justify-center text-3xl font-bold uppercase"
+      className={`bg-avatar text-primary-dark flex shrink-0 items-center justify-center font-bold uppercase ${sizes[size]}`}
       aria-hidden
     >
       {initials(name)}

@@ -248,9 +248,3 @@ export const testimonials: Testimonial[] = [
     tag: "IIT BHU, 3rd year",
   },
 ];
-
-export const platformStats = [
-  { label: "IIT alumni", value: "1,200+" },
-  { label: "IITs", value: "23" },
-  { label: "Companies", value: "300+" },
-];

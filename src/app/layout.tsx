@@ -12,7 +12,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "ENIP · Talk to IIT seniors",
+    default: "ENIP · The anonymous network for IITians",
     template: "%s · ENIP",
   },
   description:

@@ -3,8 +3,10 @@
 
 export const POINTS_PER_REFERRAL = 10;
 
-// Free alumni chat (PRD 6.3): messages a student can send for free, and how
-// many senior replies they can read before the rest are blurred.
+// Free alumni chat (PRD 6.3): how many seniors a student can start a free
+// chat with, messages they can send in each, and how many senior replies
+// they can read before the rest are blurred.
+export const FREE_CONVERSATIONS = 1;
 export const FREE_CHAT_MESSAGES = 3;
 export const FREE_VISIBLE_REPLIES = 1;
 

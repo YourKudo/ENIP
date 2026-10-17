@@ -1,12 +1,7 @@
 import "server-only";
 
 import { isUnlocked } from "./access";
-import {
-  categories,
-  contentItems,
-  platformStats,
-  testimonials,
-} from "./sample-data";
+import { categories, contentItems, testimonials } from "./sample-data";
 import type { Category, ContentItem, ContentView } from "./types";
 
 // Pages only call these functions. When the sample data moves to the
@@ -40,10 +35,6 @@ export function getAllItemPaths() {
 
 export function getTestimonials() {
   return testimonials;
-}
-
-export function getPlatformStats() {
-  return platformStats;
 }
 
 // Locked bodies never leave the server: the browser only learns how many

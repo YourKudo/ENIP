@@ -6,7 +6,11 @@ import {
   type ChatMessage,
   type NewMessage,
 } from "@/adapters/enip-app";
-import { FREE_CHAT_MESSAGES, FREE_VISIBLE_REPLIES } from "@/config/rules";
+import {
+  FREE_CHAT_MESSAGES,
+  FREE_CONVERSATIONS,
+  FREE_VISIBLE_REPLIES,
+} from "@/config/rules";
 
 // Website-side chat rules (PRD 6.3). Messages themselves live in the app's
 // backend; this module decides what the student may send and see.
@@ -15,16 +19,28 @@ import { FREE_CHAT_MESSAGES, FREE_VISIBLE_REPLIES } from "@/config/rules";
 // locked, so blurred replies can't be read with dev tools.
 export type ChatBubble = Omit<ChatMessage, "text"> & { text: string | null };
 
+// Why the student can't send right now, or null if they can.
+export type BlockedReason = "conversation-limit" | "message-limit" | null;
+
 export type ChatView = {
   messages: ChatBubble[];
   freeMessagesLeft: number;
   lockedReplyCount: number;
-  canSend: boolean;
+  blockedReason: BlockedReason;
 };
 
 export type SendResult = { ok: true } | { ok: false; error: string };
 
 const MAX_MESSAGE_LENGTH = 1000;
+
+const blockedMessages: Record<NonNullable<BlockedReason>, string> = {
+  "conversation-limit": "You've used your free chat with another senior.",
+  "message-limit": "You've used your free messages.",
+};
+
+export function describeBlocked(reason: NonNullable<BlockedReason>) {
+  return blockedMessages[reason];
+}
 
 // Referrals and points unlock full chat in Slice 3; until then nobody has it.
 function hasFullChatAccess(): boolean {
@@ -35,7 +51,10 @@ export async function getChatView(
   student: Student,
   alumniId: string,
 ): Promise<ChatView> {
-  const messages = await enipApp.listMessages(student.id, alumniId);
+  const [messages, partners] = await Promise.all([
+    enipApp.listMessages(student.id, alumniId),
+    enipApp.listChatPartners(student.id),
+  ]);
   const fullAccess = hasFullChatAccess();
 
   let repliesSeen = 0;
@@ -52,11 +71,22 @@ export async function getChatView(
     0,
     FREE_CHAT_MESSAGES - countSent(messages),
   );
+  const isNewConversation = !partners.includes(alumniId);
+
+  let blockedReason: BlockedReason = null;
+  if (!fullAccess) {
+    if (isNewConversation && partners.length >= FREE_CONVERSATIONS) {
+      blockedReason = "conversation-limit";
+    } else if (freeMessagesLeft === 0) {
+      blockedReason = "message-limit";
+    }
+  }
+
   return {
     messages: bubbles,
     freeMessagesLeft,
     lockedReplyCount,
-    canSend: fullAccess || freeMessagesLeft > 0,
+    blockedReason,
   };
 }
 
@@ -77,10 +107,10 @@ export async function sendStudentMessage(
     return { ok: false, error: "This senior is no longer available." };
   }
 
-  // Checked again here, not just in the UI, so the limit can't be bypassed.
-  const { canSend } = await getChatView(student, alumniId);
-  if (!canSend) {
-    return { ok: false, error: "You've used your free messages." };
+  // Checked again here, not just in the UI, so the limits can't be bypassed.
+  const { blockedReason } = await getChatView(student, alumniId);
+  if (blockedReason) {
+    return { ok: false, error: describeBlocked(blockedReason) };
   }
 
   await enipApp.sendMessage(student.id, alumniId, { kind: message.kind, text });

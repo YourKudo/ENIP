@@ -11,7 +11,7 @@ export default function RewardsPage() {
     <ComingSoon
       title="Points & rewards"
       description="See your points balance and spend points to unlock resources, placement stats and more chats."
-      backHref={routes.alumni}
+      backHref={routes.search()}
     />
   );
 }
