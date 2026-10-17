@@ -1,11 +1,11 @@
 import "server-only";
 
 import { memoryDb } from "./memory";
+import { postgresDb } from "./postgres";
 
-// Website-owned records. In memory for now; a Postgres implementation
-// (Drizzle) replaces memory.ts without changing callers. Once the app
-// backend is connected, students are also created there (one record per
-// verified institute email, FR-09).
+// Website-owned records (see docs/INTEGRATION.md). With DATABASE_URL set in
+// .env.local they live in Postgres; without it, in memory (dev only, reset
+// on restart). Callers never know which one they use.
 
 export type StudentRecord = {
   id: string; // our id: tracks points and referrals ("temp id")
@@ -30,6 +30,21 @@ export type StudentDetails = Omit<
 // Details held between the form and the OTP check (expire after 30 min).
 export type PendingSignUp = { details: StudentDetails; expiresAt: number };
 
+// Times below are epoch milliseconds.
+export type OtpCodeRecord = {
+  email: string;
+  codeHash: string;
+  expiresAt: number;
+  attempts: number;
+  sentAt: number[];
+};
+
+export type SessionRecord = {
+  tokenHash: string;
+  userId: string;
+  expiresAt: number;
+};
+
 export interface Db {
   students: {
     findById(id: string): Promise<StudentRecord | null>;
@@ -45,6 +60,19 @@ export interface Db {
     put(pending: PendingSignUp): Promise<void>;
     delete(email: string): Promise<void>;
   };
+  otpCodes: {
+    get(email: string): Promise<OtpCodeRecord | null>;
+    put(code: OtpCodeRecord): Promise<void>; // insert or replace
+    addFailedAttempt(email: string): Promise<void>;
+    delete(email: string): Promise<void>;
+  };
+  sessions: {
+    get(tokenHash: string): Promise<SessionRecord | null>;
+    put(session: SessionRecord): Promise<void>;
+    delete(tokenHash: string): Promise<void>;
+  };
 }
 
-export const db: Db = memoryDb;
+export const usesPostgres = Boolean(process.env.DATABASE_URL);
+
+export const db: Db = usesPostgres ? postgresDb : memoryDb;

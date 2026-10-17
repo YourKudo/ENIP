@@ -2,17 +2,18 @@ import {
   createHash,
   randomBytes,
   randomInt,
-  randomUUID,
   timingSafeEqual,
 } from "node:crypto";
 import { cookies } from "next/headers";
 import { connection } from "next/server";
 
+import { db } from "@/adapters/db";
 import { email } from "@/adapters/email";
 import type { AuthProvider } from "./index";
 
-// Our own email-OTP sign-in. State is kept in memory for now (it resets
-// when the server restarts); it moves to the database with Slice 3.
+// Our own email-OTP sign-in. Codes and sessions are stored through the db
+// adapter (Postgres when DATABASE_URL is set), hashed, never in plain text.
+// The user id is the verified email itself.
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const RESEND_AFTER_MS = 30 * 1000;
@@ -21,36 +22,13 @@ const MAX_ATTEMPTS = 5;
 const SESSION_TTL_S = 30 * 24 * 60 * 60;
 const SESSION_COOKIE = "enip_session";
 
-type PendingCode = {
-  hash: string;
-  expiresAt: number;
-  attempts: number;
-  sentAt: number[];
-};
-type Session = { userId: string; expiresAt: number };
-
-type AuthState = {
-  codes: Map<string, PendingCode>;
-  sessions: Map<string, Session>; // keyed by hash of the cookie token
-  users: Map<string, string>; // email -> user id
-};
-
-// Kept on globalThis so state survives the dev server's hot reloads.
-const state: AuthState = ((
-  globalThis as { __enipAuth?: AuthState }
-).__enipAuth ??= {
-  codes: new Map(),
-  sessions: new Map(),
-  users: new Map(),
-});
-
 const sha256 = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 
 export const localAuth: AuthProvider = {
   async sendCode(address) {
     const now = Date.now();
-    const previous = state.codes.get(address);
+    const previous = await db.otpCodes.get(address);
     const recentSends = (previous?.sentAt ?? []).filter(
       (t) => now - t < 60 * 60 * 1000,
     );
@@ -67,8 +45,9 @@ export const localAuth: AuthProvider = {
     }
 
     const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
-    state.codes.set(address, {
-      hash: sha256(code),
+    await db.otpCodes.put({
+      email: address,
+      codeHash: sha256(code),
       expiresAt: now + CODE_TTL_MS,
       attempts: 0,
       sentAt: [...recentSends, now],
@@ -81,8 +60,8 @@ export const localAuth: AuthProvider = {
       });
     } catch (error) {
       // Undo this attempt so the student can retry straight away.
-      if (previous) state.codes.set(address, previous);
-      else state.codes.delete(address);
+      if (previous) await db.otpCodes.put(previous);
+      else await db.otpCodes.delete(address);
       console.error("[email] sending the verification code failed:", error);
       return {
         ok: false,
@@ -93,7 +72,7 @@ export const localAuth: AuthProvider = {
   },
 
   async verifyCode(address, code) {
-    const pending = state.codes.get(address);
+    const pending = await db.otpCodes.get(address);
     if (!pending || pending.expiresAt < Date.now()) {
       return { ok: false, error: "This code has expired. Ask for a new one." };
     }
@@ -102,26 +81,21 @@ export const localAuth: AuthProvider = {
     }
     const matches = timingSafeEqual(
       Buffer.from(sha256(code)),
-      Buffer.from(pending.hash),
+      Buffer.from(pending.codeHash),
     );
     if (!matches) {
-      pending.attempts += 1;
+      await db.otpCodes.addFailedAttempt(address);
       return {
         ok: false,
         error: "That code isn't right. Check and try again.",
       };
     }
 
-    state.codes.delete(address);
-    let userId = state.users.get(address);
-    if (!userId) {
-      userId = randomUUID();
-      state.users.set(address, userId);
-    }
-
+    await db.otpCodes.delete(address);
     const token = randomBytes(32).toString("base64url");
-    state.sessions.set(sha256(token), {
-      userId,
+    await db.sessions.put({
+      tokenHash: sha256(token),
+      userId: address,
       expiresAt: Date.now() + SESSION_TTL_S * 1000,
     });
     (await cookies()).set(SESSION_COOKIE, token, {
@@ -131,7 +105,7 @@ export const localAuth: AuthProvider = {
       path: "/",
       maxAge: SESSION_TTL_S,
     });
-    return { ok: true, userId };
+    return { ok: true, userId: address };
   },
 
   async getUserId() {
@@ -139,7 +113,7 @@ export const localAuth: AuthProvider = {
     if (!token) return null;
     // Checking expiry reads the clock, so this must run per request.
     await connection();
-    const session = state.sessions.get(sha256(token));
+    const session = await db.sessions.get(sha256(token));
     if (!session || session.expiresAt < Date.now()) return null;
     return session.userId;
   },
@@ -147,7 +121,7 @@ export const localAuth: AuthProvider = {
   async signOut() {
     const jar = await cookies();
     const token = jar.get(SESSION_COOKIE)?.value;
-    if (token) state.sessions.delete(sha256(token));
+    if (token) await db.sessions.delete(sha256(token));
     jar.delete(SESSION_COOKIE);
   },
 };

@@ -1,16 +1,27 @@
-import type { Db, PendingSignUp, StudentRecord } from "./index";
+import type {
+  Db,
+  OtpCodeRecord,
+  PendingSignUp,
+  SessionRecord,
+  StudentRecord,
+} from "./index";
 
 // DEV ONLY: records live in memory and reset when the server restarts.
+// Used when DATABASE_URL is not set.
 
 type Tables = {
   students: Map<string, StudentRecord>;
   pending: Map<string, PendingSignUp>;
+  otpCodes: Map<string, OtpCodeRecord>;
+  sessions: Map<string, SessionRecord>;
 };
 
 // Kept on globalThis so data survives the dev server's hot reloads.
 const tables: Tables = ((globalThis as { __enipDb?: Tables }).__enipDb ??= {
   students: new Map(),
   pending: new Map(),
+  otpCodes: new Map(),
+  sessions: new Map(),
 });
 
 function findStudent(match: (s: StudentRecord) => boolean) {
@@ -53,6 +64,33 @@ export const memoryDb: Db = {
     },
     async delete(email) {
       tables.pending.delete(email);
+    },
+  },
+  otpCodes: {
+    async get(email) {
+      return tables.otpCodes.get(email) ?? null;
+    },
+    async put(code) {
+      tables.otpCodes.set(code.email, code);
+    },
+    async addFailedAttempt(email) {
+      const code = tables.otpCodes.get(email);
+      if (code)
+        tables.otpCodes.set(email, { ...code, attempts: code.attempts + 1 });
+    },
+    async delete(email) {
+      tables.otpCodes.delete(email);
+    },
+  },
+  sessions: {
+    async get(tokenHash) {
+      return tables.sessions.get(tokenHash) ?? null;
+    },
+    async put(session) {
+      tables.sessions.set(session.tokenHash, session);
+    },
+    async delete(tokenHash) {
+      tables.sessions.delete(tokenHash);
     },
   },
 };
