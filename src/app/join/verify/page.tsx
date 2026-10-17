@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { OtpForm } from "@/components/onboarding/otp-form";
@@ -37,6 +38,18 @@ async function Verify({ searchParams }: PageProps<"/join/verify">) {
         <span className="text-ink font-semibold">{maskedEmail}</span>.
       </p>
       <OtpForm action={verifyAction.bind(null, next)} resend={resendAction} />
+      {process.env.NODE_ENV !== "production" && (
+        <p className="bg-chip text-primary mt-8 rounded-2xl px-4 py-3 text-center text-sm">
+          Testing? No real email is sent yet.{" "}
+          <Link
+            href={routes.devInbox}
+            target="_blank"
+            className="font-semibold underline"
+          >
+            Open the dev inbox
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

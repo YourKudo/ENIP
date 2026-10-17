@@ -19,6 +19,7 @@ export const routes = {
   verify: (next?: string) => withParams("/join/verify", { next }),
   signIn: (next?: string) => withParams("/signin", { next }),
   waitlist: "/waitlist",
+  devInbox: "/dev/inbox",
 };
 
 // Only same-site paths are accepted as return targets, so a crafted link
