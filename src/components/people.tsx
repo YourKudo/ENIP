@@ -14,6 +14,8 @@ const chatLabels: Record<MemberType, string> = {
   "yal-team": "Chat with this mentor",
   eir: "Chat with this mentor",
 };
+const resultCardClass =
+  "card flex min-w-0 flex-col gap-4 transition-shadow duration-200 hover:shadow-lg";
 
 function batchLine(person: AlumniProfile) {
   return `${person.institute} · ${person.branch} '${String(person.batch).slice(2)}`;
@@ -23,37 +25,41 @@ function batchLine(person: AlumniProfile) {
 export function ResultCard({
   person,
   href,
+  className,
 }: {
   person: AlumniProfile;
   href: string;
+  className?: string;
 }) {
   return (
     <Link
       href={href}
       scroll={false}
-      className="card flex min-w-0 flex-col gap-4 transition-shadow duration-200 hover:shadow-lg"
+      className={`${resultCardClass} ${className ?? ""}`}
     >
-      <div className="flex items-start gap-4">
+      <div className="result-card-heading flex items-start gap-4">
         <Avatar
           name={person.displayName}
           imageUrl={person.avatarUrl}
           size="md"
         />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
+        <div className="result-card-copy min-w-0 flex-1">
+          <div className="result-card-title-row flex items-start justify-between gap-2">
             <p className="text-ink truncate text-lg font-bold">
               {person.displayName}
             </p>
             <MemberBadge type={person.memberType} />
           </div>
-          <p className="text-primary truncate text-sm font-semibold">
+          <p className="result-card-role text-primary truncate text-sm font-semibold">
             {person.jobTitle} @ {person.company}
           </p>
-          <p className="text-meta mt-1 line-clamp-2">{person.helpWith}</p>
+          <p className="result-card-summary text-meta mt-1 line-clamp-2">
+            {person.helpWith}
+          </p>
         </div>
       </div>
       <TagChips tags={person.topics} />
-      <span className="text-primary inline-flex items-center gap-1 self-end text-sm font-semibold">
+      <span className="result-card-action text-primary inline-flex items-center gap-1 self-end text-sm font-semibold">
         View profile <ChevronRight className="size-4" aria-hidden />
       </span>
     </Link>

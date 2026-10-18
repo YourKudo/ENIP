@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { auth } from "@/adapters/auth";
 import { db, type StudentRecord } from "@/adapters/db";
+import { INITIAL_POINTS } from "@/config/rules";
 import { emailBelongsTo, findIit } from "@/config/iits";
 import { isHeardFrom } from "@/config/sources";
 import {
@@ -207,6 +208,14 @@ export async function completeVerification(
       createdAt: new Date().toISOString(),
     };
     await db.students.insert(student);
+    if (INITIAL_POINTS !== null) {
+      await db.points.award({
+        studentId: student.id,
+        delta: INITIAL_POINTS,
+        reason: "signup",
+        refId: student.id,
+      });
+    }
     await db.pendingSignUps.delete(email);
     await onStudentVerified(student, pending.referralCode);
   }

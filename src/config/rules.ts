@@ -3,6 +3,21 @@
 
 export const POINTS_PER_REFERRAL = 10;
 
+// CV review economics are intentionally unset until product finalizes them.
+// Empty or invalid values disable paid reviews instead of making them free.
+function optionalPositiveInteger(value: string | undefined): number | null {
+  if (!value?.trim()) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+export const INITIAL_POINTS = optionalPositiveInteger(
+  process.env.ENIP_INITIAL_POINTS,
+);
+export const INSTANT_CV_REVIEW_COST = optionalPositiveInteger(
+  process.env.ENIP_INSTANT_CV_REVIEW_COST,
+);
+
 // Waitlist (PRD 7.3): successful referrals needed for each milestone, how
 // many places it moves the student up, and the one that skips the line.
 export type WaitlistMilestone = {

@@ -3,6 +3,11 @@
 export const routes = {
   home: "/",
   cvReview: "/cv-review",
+  cvReviewInstant: "/cv-review/instant",
+  cvReviewGuestStart: "/api/cv-review/guest-session",
+  cvReviewInstantApi: "/api/cv-review/instant",
+  cvReviewResult: (reviewId: string) =>
+    `/cv-review/instant/${encodeURIComponent(reviewId)}`,
   referrals: "/referrals",
   rewards: "/rewards",
   category: (category: string) => `/explore/${category}`,

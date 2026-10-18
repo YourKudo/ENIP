@@ -3,6 +3,8 @@ import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import type {
+  CvReviewCriterion,
+  CvReviewRecord,
   Db,
   MentorRecord,
   MessageRecord,
@@ -38,6 +40,7 @@ const {
   waitlistEntries,
   referrals,
   pointsLedger,
+  cvReviews,
   mentors,
   conversations,
   messages,
@@ -501,6 +504,377 @@ export const postgresDb: Db = {
     },
   },
 
+  cvReviews: {
+    async getForStudent(id, studentId): Promise<CvReviewRecord | null> {
+      const [row] = await orm()
+        .select()
+        .from(cvReviews)
+        .where(
+          and(
+            eq(cvReviews.id, id),
+            eq(cvReviews.studentId, studentId),
+            eq(cvReviews.status, "completed"),
+          ),
+        );
+      if (
+        !row ||
+        row.score === null ||
+        row.summary === null ||
+        row.evaluatedCriteria === null
+      ) {
+        return null;
+      }
+      return {
+        id: row.id,
+        studentId: row.studentId,
+        targetRole: row.targetRole,
+        cost: row.pointsCost,
+        result: {
+          score: row.score,
+          summary: row.summary,
+          evaluatedCriteria: row.evaluatedCriteria as CvReviewCriterion[],
+        },
+        createdAt: row.createdAt.toISOString(),
+      };
+    },
+
+    async ensureGuestClaim(guestTokenHash) {
+      await orm()
+        .insert(cvReviews)
+        .values({
+          guestTokenHash,
+          status: "available",
+          targetRole: "",
+          pointsReserved: 0,
+          pointsCost: 0,
+        })
+        .onConflictDoNothing({ target: cvReviews.guestTokenHash });
+    },
+
+    async getGuestClaim(guestTokenHash) {
+      const [row] = await orm()
+        .select({ id: cvReviews.id, status: cvReviews.status })
+        .from(cvReviews)
+        .where(eq(cvReviews.guestTokenHash, guestTokenHash))
+        .limit(1);
+      if (
+        !row ||
+        !["available", "processing", "failed", "completed"].includes(row.status)
+      ) {
+        return null;
+      }
+      return {
+        id: row.id,
+        status: row.status as
+          "available" | "processing" | "failed" | "completed",
+      };
+    },
+
+    async getForGuest(id, guestTokenHash): Promise<CvReviewRecord | null> {
+      if (!isUuid(id)) return null;
+      const [row] = await orm()
+        .select()
+        .from(cvReviews)
+        .where(
+          and(
+            eq(cvReviews.id, id),
+            eq(cvReviews.guestTokenHash, guestTokenHash),
+            eq(cvReviews.status, "completed"),
+          ),
+        )
+        .limit(1);
+      if (
+        !row ||
+        row.score === null ||
+        row.summary === null ||
+        row.evaluatedCriteria === null
+      ) {
+        return null;
+      }
+      return {
+        id: row.id,
+        studentId: null,
+        targetRole: row.targetRole,
+        cost: 0,
+        result: {
+          score: row.score,
+          summary: row.summary,
+          evaluatedCriteria: row.evaluatedCriteria as CvReviewCriterion[],
+        },
+        createdAt: row.createdAt.toISOString(),
+      };
+    },
+
+    async reserveGuest({ guestTokenHash, idempotencyKey, targetRole }) {
+      return orm().transaction(async (tx) => {
+        await tx.execute(
+          sql`select id from cv_reviews where guest_token_hash = ${guestTokenHash} for update`,
+        );
+        const [claim] = await tx
+          .select()
+          .from(cvReviews)
+          .where(eq(cvReviews.guestTokenHash, guestTokenHash));
+        if (!claim) return { status: "not-found" as const };
+        if (claim.status === "completed") {
+          return { status: "completed" as const, reviewId: claim.id };
+        }
+        if (
+          claim.status === "failed" &&
+          claim.idempotencyKey === idempotencyKey
+        ) {
+          return { status: "failed" as const, reviewId: claim.id };
+        }
+        if (
+          claim.status === "processing" &&
+          Date.now() - claim.updatedAt.getTime() <= 15 * 60_000
+        ) {
+          return { status: "processing" as const, reviewId: claim.id };
+        }
+
+        await tx
+          .update(cvReviews)
+          .set({
+            idempotencyKey,
+            status: "processing",
+            targetRole,
+            pointsReserved: 0,
+            pointsCost: 0,
+            errorCode: null,
+            score: null,
+            summary: null,
+            evaluatedCriteria: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(cvReviews.id, claim.id));
+        return { status: "started" as const, reviewId: claim.id };
+      });
+    },
+
+    async failGuest({ guestTokenHash, idempotencyKey, errorCode }) {
+      await orm()
+        .update(cvReviews)
+        .set({ status: "failed", errorCode, updatedAt: new Date() })
+        .where(
+          and(
+            eq(cvReviews.guestTokenHash, guestTokenHash),
+            eq(cvReviews.idempotencyKey, idempotencyKey),
+            eq(cvReviews.status, "processing"),
+          ),
+        );
+    },
+
+    async completeGuest({ guestTokenHash, idempotencyKey, result }) {
+      return orm().transaction(async (tx) => {
+        await tx.execute(
+          sql`select id from cv_reviews where guest_token_hash = ${guestTokenHash} for update`,
+        );
+        const [claim] = await tx
+          .select()
+          .from(cvReviews)
+          .where(eq(cvReviews.guestTokenHash, guestTokenHash));
+        if (!claim) return { status: "not-found" as const };
+        if (claim.status === "completed") {
+          return { status: "already-completed" as const, reviewId: claim.id };
+        }
+        if (
+          claim.status !== "processing" ||
+          claim.idempotencyKey !== idempotencyKey
+        ) {
+          return { status: "failed" as const };
+        }
+        await tx
+          .update(cvReviews)
+          .set({
+            status: "completed",
+            errorCode: null,
+            score: result.score,
+            summary: result.summary,
+            evaluatedCriteria: result.evaluatedCriteria,
+            updatedAt: new Date(),
+          })
+          .where(eq(cvReviews.id, claim.id));
+        return { status: "completed" as const, reviewId: claim.id };
+      });
+    },
+
+    async reserve({ studentId, idempotencyKey, targetRole, cost }) {
+      if (!Number.isSafeInteger(cost) || cost <= 0) {
+        throw new Error("CV review points cost must be configured.");
+      }
+      return orm().transaction(async (tx) => {
+        await tx.execute(
+          sql`select id from students where id = ${studentId} for update`,
+        );
+        const [existing] = await tx
+          .select()
+          .from(cvReviews)
+          .where(
+            and(
+              eq(cvReviews.studentId, studentId),
+              eq(cvReviews.idempotencyKey, idempotencyKey),
+            ),
+          );
+        if (existing) {
+          if (existing.status === "completed") {
+            return { status: "completed" as const, reviewId: existing.id };
+          }
+          if (existing.status === "failed") {
+            return { status: "failed" as const, reviewId: existing.id };
+          }
+          if (Date.now() - existing.createdAt.getTime() > 15 * 60_000) {
+            await tx
+              .update(cvReviews)
+              .set({
+                status: "failed",
+                pointsReserved: 0,
+                errorCode: "expired",
+                updatedAt: new Date(),
+              })
+              .where(eq(cvReviews.id, existing.id));
+            return { status: "failed" as const, reviewId: existing.id };
+          }
+          return { status: "processing" as const, reviewId: existing.id };
+        }
+
+        const [ledger] = await tx
+          .select({ total: sum(pointsLedger.delta) })
+          .from(pointsLedger)
+          .where(eq(pointsLedger.studentId, studentId));
+        const [reservations] = await tx
+          .select({ total: sum(cvReviews.pointsReserved) })
+          .from(cvReviews)
+          .where(
+            and(
+              eq(cvReviews.studentId, studentId),
+              eq(cvReviews.status, "processing"),
+              gt(cvReviews.createdAt, new Date(Date.now() - 15 * 60_000)),
+            ),
+          );
+        const balance =
+          Number(ledger?.total ?? 0) - Number(reservations?.total ?? 0);
+        if (balance < cost) return { status: "insufficient" as const, balance };
+
+        const [attempt] = await tx
+          .insert(cvReviews)
+          .values({
+            studentId,
+            idempotencyKey,
+            status: "processing",
+            targetRole,
+            pointsReserved: cost,
+            pointsCost: cost,
+          })
+          .returning({ id: cvReviews.id });
+        return { status: "started" as const, reviewId: attempt.id, balance };
+      });
+    },
+
+    async fail({ studentId, idempotencyKey, errorCode }) {
+      await orm()
+        .update(cvReviews)
+        .set({
+          status: "failed",
+          pointsReserved: 0,
+          errorCode,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(cvReviews.studentId, studentId),
+            eq(cvReviews.idempotencyKey, idempotencyKey),
+            eq(cvReviews.status, "processing"),
+          ),
+        );
+    },
+
+    async complete({ studentId, idempotencyKey, result }) {
+      return orm().transaction(async (tx) => {
+        await tx.execute(
+          sql`select id from students where id = ${studentId} for update`,
+        );
+        const [attempt] = await tx
+          .select()
+          .from(cvReviews)
+          .where(
+            and(
+              eq(cvReviews.studentId, studentId),
+              eq(cvReviews.idempotencyKey, idempotencyKey),
+            ),
+          );
+        if (!attempt) return { status: "not-found" as const };
+        if (attempt.status === "completed") {
+          const [ledger] = await tx
+            .select({ total: sum(pointsLedger.delta) })
+            .from(pointsLedger)
+            .where(eq(pointsLedger.studentId, studentId));
+          const [reservations] = await tx
+            .select({ total: sum(cvReviews.pointsReserved) })
+            .from(cvReviews)
+            .where(
+              and(
+                eq(cvReviews.studentId, studentId),
+                eq(cvReviews.status, "processing"),
+              ),
+            );
+          return {
+            status: "already-completed" as const,
+            reviewId: attempt.id,
+            balance:
+              Number(ledger?.total ?? 0) - Number(reservations?.total ?? 0),
+          };
+        }
+        if (attempt.status !== "processing") {
+          return { status: "failed" as const };
+        }
+
+        await tx
+          .insert(pointsLedger)
+          .values({
+            studentId,
+            delta: -attempt.pointsReserved,
+            reason: "instant_cv_review",
+            refId: attempt.id,
+          })
+          .onConflictDoNothing({
+            target: [pointsLedger.reason, pointsLedger.refId],
+          });
+        await tx
+          .update(cvReviews)
+          .set({
+            status: "completed",
+            pointsReserved: 0,
+            errorCode: null,
+            score: result.score,
+            summary: result.summary,
+            evaluatedCriteria: result.evaluatedCriteria,
+            updatedAt: new Date(),
+          })
+          .where(eq(cvReviews.id, attempt.id));
+
+        const [ledger] = await tx
+          .select({ total: sum(pointsLedger.delta) })
+          .from(pointsLedger)
+          .where(eq(pointsLedger.studentId, studentId));
+        const [reservations] = await tx
+          .select({ total: sum(cvReviews.pointsReserved) })
+          .from(cvReviews)
+          .where(
+            and(
+              eq(cvReviews.studentId, studentId),
+              eq(cvReviews.status, "processing"),
+              gt(cvReviews.createdAt, new Date(Date.now() - 15 * 60_000)),
+            ),
+          );
+        return {
+          status: "completed" as const,
+          reviewId: attempt.id,
+          balance:
+            Number(ledger?.total ?? 0) - Number(reservations?.total ?? 0),
+        };
+      });
+    },
+  },
+
   points: {
     async award({ studentId, delta, reason, refId }) {
       await orm()
@@ -515,7 +889,17 @@ export const postgresDb: Db = {
         .select({ total: sum(pointsLedger.delta) })
         .from(pointsLedger)
         .where(eq(pointsLedger.studentId, studentId));
-      return Number(row?.total ?? 0);
+      const [reservations] = await orm()
+        .select({ total: sum(cvReviews.pointsReserved) })
+        .from(cvReviews)
+        .where(
+          and(
+            eq(cvReviews.studentId, studentId),
+            eq(cvReviews.status, "processing"),
+            gt(cvReviews.createdAt, new Date(Date.now() - 15 * 60_000)),
+          ),
+        );
+      return Number(row?.total ?? 0) - Number(reservations?.total ?? 0);
     },
   },
 };

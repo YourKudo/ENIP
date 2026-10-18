@@ -103,6 +103,35 @@ export type ConversationRecord = {
   mentorId: string;
 };
 
+export type CvReviewCriterion = {
+  id: string;
+  label: string;
+  weight: number;
+  isMandatory: boolean;
+  rationale: string;
+  matchStatus: "ideal" | "potential" | "not_mentioned" | "not_valid";
+  matchExplanation: string;
+  // From Match v2 on: the minimum level asked for, such as "1 year
+  // minimum", and the quote from the resume backing the status.
+  threshold?: string;
+  evidence?: string;
+};
+
+export type CvReviewResult = {
+  score: number;
+  summary: string;
+  evaluatedCriteria: CvReviewCriterion[];
+};
+
+export type CvReviewRecord = {
+  id: string;
+  studentId: string | null;
+  targetRole: string;
+  cost: number;
+  result: CvReviewResult;
+  createdAt: string;
+};
+
 export interface Db {
   students: {
     findById(id: string): Promise<StudentRecord | null>;
@@ -179,6 +208,74 @@ export interface Db {
       body: string;
       sentBy: string;
     }): Promise<MessageRecord>;
+  };
+  cvReviews: {
+    getForStudent(
+      id: string,
+      studentId: string,
+    ): Promise<CvReviewRecord | null>;
+    ensureGuestClaim(guestTokenHash: string): Promise<void>;
+    getGuestClaim(guestTokenHash: string): Promise<{
+      id: string;
+      status: "available" | "processing" | "failed" | "completed";
+    } | null>;
+    getForGuest(
+      id: string,
+      guestTokenHash: string,
+    ): Promise<CvReviewRecord | null>;
+    reserveGuest(input: {
+      guestTokenHash: string;
+      idempotencyKey: string;
+      targetRole: string;
+    }): Promise<
+      | { status: "started"; reviewId: string }
+      | {
+          status: "processing" | "failed" | "completed";
+          reviewId: string;
+        }
+      | { status: "not-found" }
+    >;
+    failGuest(input: {
+      guestTokenHash: string;
+      idempotencyKey: string;
+      errorCode: string;
+    }): Promise<void>;
+    completeGuest(input: {
+      guestTokenHash: string;
+      idempotencyKey: string;
+      result: CvReviewResult;
+    }): Promise<
+      | { status: "completed" | "already-completed"; reviewId: string }
+      | { status: "not-found" | "failed" }
+    >;
+    reserve(input: {
+      studentId: string;
+      idempotencyKey: string;
+      targetRole: string;
+      cost: number;
+    }): Promise<
+      | { status: "started"; reviewId: string; balance: number }
+      | { status: "insufficient"; balance: number }
+      | { status: "processing" | "failed"; reviewId: string }
+      | { status: "completed"; reviewId: string }
+    >;
+    fail(input: {
+      studentId: string;
+      idempotencyKey: string;
+      errorCode: string;
+    }): Promise<void>;
+    complete(input: {
+      studentId: string;
+      idempotencyKey: string;
+      result: CvReviewResult;
+    }): Promise<
+      | {
+          status: "completed" | "already-completed";
+          reviewId: string;
+          balance: number;
+        }
+      | { status: "not-found" | "failed" }
+    >;
   };
   points: {
     // Idempotent: the same (reason, refId) is only ever counted once.

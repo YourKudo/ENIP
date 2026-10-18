@@ -4,6 +4,7 @@ import {
   jsonb,
   pgTable,
   primaryKey,
+  real,
   text,
   timestamp,
   unique,
@@ -154,6 +155,31 @@ export const pointsLedger = pgTable(
     createdAt: createdAt(),
   },
   (t) => [unique().on(t.reason, t.refId)],
+);
+
+// Attempts also reserve points while an external CV review is running. Only
+// completed rows contain results and a matching points-ledger debit.
+export const cvReviews = pgTable(
+  "cv_reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    studentId: uuid("student_id").references(() => students.id),
+    guestTokenHash: text("guest_token_hash").unique(),
+    idempotencyKey: text("idempotency_key"),
+    status: text("status").notNull().default("processing"),
+    targetRole: text("target_role").notNull(),
+    pointsReserved: integer("points_reserved").notNull(),
+    pointsCost: integer("points_cost").notNull(),
+    errorCode: text("error_code"),
+    score: real("score"),
+    summary: text("summary"),
+    evaluatedCriteria: jsonb("evaluated_criteria"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [unique().on(t.studentId, t.idempotencyKey)],
 );
 
 export const unlocks = pgTable(
