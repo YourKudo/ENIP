@@ -20,6 +20,11 @@ export const routes = {
   signIn: (next?: string) => withParams("/signin", { next }),
   waitlist: "/waitlist",
   devInbox: "/dev/inbox",
+  // Phase 1 team inbox, where the YAL team replies as the seniors.
+  team: "/team",
+  teamSignIn: "/team/signin",
+  teamVerify: "/team/verify",
+  teamChat: (conversationId: string) => `/team/chat/${conversationId}`,
   // Short link people share; remembers the code, then opens the home page.
   referralLink: (code: string) => `/r/${code}`,
 };

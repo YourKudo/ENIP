@@ -30,3 +30,6 @@ export const FREE_VISIBLE_REPLIES = 1;
 // Ways to keep chatting once the free allowance is used.
 export const CHAT_UNLOCK_REFERRALS = 1;
 export const CHAT_UNLOCK_POINTS = 30;
+
+// Longest chat message, for students and team replies alike.
+export const MAX_MESSAGE_LENGTH = 1000;

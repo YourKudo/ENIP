@@ -1,10 +1,10 @@
 import "server-only";
 
-import { mockEnipApp } from "./mock";
+import { localEnipApp } from "./local";
 
-// Everything the website needs from the ENIP app's backend. The app dev team's
-// API plugs in as a second implementation of this interface (http.ts), and
-// ENIP_APP_PROVIDER in .env picks which one is used.
+// Everything the website needs from the ENIP app's backend. Phase 1 (local.ts)
+// keeps seniors and chats in our own database. The app dev team's API plugs
+// in as a second implementation of this interface (http.ts) in phase 2.
 
 // FR-18: YAL team members and EIRs get their own badge and are never
 // labelled as alumni.
@@ -28,8 +28,8 @@ export type AlumniProfile = {
   memberType: MemberType;
 };
 
-// Messages live in the app's database: the student writes from the web and
-// the senior replies from the app.
+// The student writes from the web; the senior replies from /team (phase 1)
+// or from the app (phase 2).
 export type ChatMessage = {
   id: string;
   from: "student" | "senior";
@@ -55,4 +55,4 @@ export interface EnipApp {
   ): Promise<ChatMessage>;
 }
 
-export const enipApp: EnipApp = mockEnipApp;
+export const enipApp: EnipApp = localEnipApp;

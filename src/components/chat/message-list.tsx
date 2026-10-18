@@ -8,12 +8,19 @@ const timeFormat = new Intl.DateTimeFormat("en-IN", {
   timeZone: "Asia/Kolkata",
 });
 
-// Student = plum bubble on the right; senior = white bubble on the left.
-export function MessageList({ messages }: { messages: ChatBubble[] }) {
+// The viewer's own messages are plum bubbles on the right; the other side's
+// are white on the left. Students view as "student", the team as "senior".
+export function MessageList({
+  messages,
+  viewer = "student",
+}: {
+  messages: ChatBubble[];
+  viewer?: ChatBubble["from"];
+}) {
   return (
     <ol className="space-y-3">
       {messages.map((m) => {
-        const mine = m.from === "student";
+        const mine = m.from === viewer;
         return (
           <li key={m.id} className={`flex ${mine ? "justify-end" : ""}`}>
             <div

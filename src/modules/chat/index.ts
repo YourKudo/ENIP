@@ -9,12 +9,13 @@ import {
   FREE_CHAT_MESSAGES,
   FREE_CONVERSATIONS,
   FREE_VISIBLE_REPLIES,
+  MAX_MESSAGE_LENGTH,
 } from "@/config/rules";
 import { hasFullChatAccess } from "@/modules/growth";
 import type { Student } from "@/modules/students";
 
-// Website-side chat rules (PRD 6.3). Messages themselves live in the app's
-// backend; this module decides what the student may send and see.
+// Website-side chat rules (PRD 6.3). Messages are stored by the enip-app
+// adapter; this module decides what the student may send and see.
 
 // A message as the browser receives it: text is null when the reply is
 // locked, so blurred replies can't be read with dev tools.
@@ -31,8 +32,6 @@ export type ChatView = {
 };
 
 export type SendResult = { ok: true } | { ok: false; error: string };
-
-const MAX_MESSAGE_LENGTH = 1000;
 
 const blockedMessages: Record<NonNullable<BlockedReason>, string> = {
   "conversation-limit": "You've used your free chat with another senior.",
@@ -93,13 +92,8 @@ export async function sendStudentMessage(
   message: NewMessage,
 ): Promise<SendResult> {
   const text = message.text.trim();
-  if (!text) return { ok: false, error: "Type a message first." };
-  if (text.length > MAX_MESSAGE_LENGTH) {
-    return {
-      ok: false,
-      error: `Keep it under ${MAX_MESSAGE_LENGTH} characters.`,
-    };
-  }
+  const invalid = checkMessageText(text);
+  if (invalid) return { ok: false, error: invalid };
   if (!(await enipApp.getAlumni(alumniId))) {
     return { ok: false, error: "This senior is no longer available." };
   }
@@ -112,6 +106,15 @@ export async function sendStudentMessage(
 
   await enipApp.sendMessage(student.id, alumniId, { kind: message.kind, text });
   return { ok: true };
+}
+
+// Shared with the team inbox. Returns an error message, or null if fine.
+export function checkMessageText(text: string): string | null {
+  if (!text) return "Type a message first.";
+  if (text.length > MAX_MESSAGE_LENGTH) {
+    return `Keep it under ${MAX_MESSAGE_LENGTH} characters.`;
+  }
+  return null;
 }
 
 function countSent(messages: ChatMessage[]) {
