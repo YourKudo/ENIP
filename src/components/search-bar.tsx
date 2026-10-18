@@ -6,7 +6,13 @@ import { routes } from "@/lib/routes";
 
 // The primary search input. A plain GET form to /search?q=…, so Enter
 // works everywhere and the query lives in the URL (easy to keep and share).
-export function SearchBar({ defaultValue = "" }: { defaultValue?: string }) {
+export function SearchBar({
+  defaultValue = "",
+  placeholder = "What are you looking for?",
+}: {
+  defaultValue?: string;
+  placeholder?: string;
+}) {
   return (
     <Form action="/search" className="relative">
       <Search
@@ -16,7 +22,7 @@ export function SearchBar({ defaultValue = "" }: { defaultValue?: string }) {
       <input
         name="q"
         defaultValue={defaultValue}
-        placeholder="What are you looking for?"
+        placeholder={placeholder}
         aria-label="What are you looking for?"
         className="bg-surface shadow-card text-body focus:ring-primary-soft h-14 w-full rounded-3xl pr-16 pl-13 outline-none focus:ring-2"
       />

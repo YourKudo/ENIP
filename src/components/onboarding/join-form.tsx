@@ -42,7 +42,7 @@ export function JoinForm({
     <form
       action={submit}
       onSubmit={keepValuesOnSubmit(submit)}
-      className="mt-8 space-y-5"
+      className="join-form mt-7"
       noValidate
     >
       <input type="hidden" name="next" value={next} />

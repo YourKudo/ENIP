@@ -35,21 +35,21 @@ async function Join({ searchParams }: PageProps<"/join">) {
   const invitedBy = await getRememberedReferral();
 
   return (
-    <div className="mx-auto max-w-[480px] px-6 py-10">
-      <p className="text-eyebrow">
+    <div className="join-page mx-auto max-w-[480px] px-5 py-8 sm:px-6 sm:py-10">
+      <p className="join-eyebrow">
         {toChat ? "One step before you chat" : "Join the network"}
       </p>
-      <h1 className="text-title mt-1">
+      <h1 className="join-title mt-2">
         {toChat ? "Tell us who you are" : "Get on the waitlist"}
       </h1>
-      <p className="text-body mt-2">
+      <p className="join-description mt-3">
         {toChat
           ? "Seniors only talk to verified IITians. This takes under a minute."
           : "Verify your IIT email to join. Refer friends to move up the list."}
       </p>
 
       {invitedBy && (
-        <p className="bg-chip text-primary mt-5 rounded-2xl px-4 py-3 text-sm font-semibold">
+        <p className="join-invite mt-5 rounded-2xl px-4 py-3 text-sm font-semibold">
           {invitedBy.referrerFirstName} invited you. Their code {invitedBy.code}{" "}
           is filled in below.
         </p>
@@ -68,7 +68,7 @@ async function Join({ searchParams }: PageProps<"/join">) {
         next={next}
       />
 
-      <p className="text-meta mt-6 text-center">
+      <p className="join-signin mt-6 text-center">
         Already joined?{" "}
         <Link
           href={routes.signIn(next || undefined)}
