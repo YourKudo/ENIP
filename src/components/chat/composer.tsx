@@ -12,14 +12,19 @@ type SendAction = (
 
 // Message box with "Attach CV" and starter suggestions. The server action
 // enforces the free-message limit; `disabled` only mirrors it in the UI.
+// The team inbox uses it without the CV button.
 export function Composer({
   action,
-  disabled,
-  suggestions,
+  disabled = false,
+  suggestions = [],
+  canAttachCv = true,
+  placeholder = "Write a message…",
 }: {
   action: SendAction;
-  disabled: boolean;
-  suggestions: string[];
+  disabled?: boolean;
+  suggestions?: string[];
+  canAttachCv?: boolean;
+  placeholder?: string;
 }) {
   const [text, setText] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
@@ -69,9 +74,7 @@ export function Composer({
           value={text}
           onChange={(e) => setText(e.target.value)}
           disabled={locked}
-          placeholder={
-            disabled ? "Unlock to keep chatting" : "Write a message…"
-          }
+          placeholder={disabled ? "Unlock to keep chatting" : placeholder}
           aria-label="Message"
           className="bg-surface shadow-card text-body h-14 min-w-0 flex-1 rounded-3xl px-5 outline-none disabled:opacity-60"
         />
@@ -86,22 +89,26 @@ export function Composer({
       </form>
 
       <div className="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          disabled={locked}
-          onClick={() => fileInput.current?.click()}
-          className="border-primary bg-surface text-subtle rounded-button inline-flex h-11 items-center gap-2 border-[1.5px] px-4 text-sm font-semibold disabled:opacity-40"
-        >
-          <Paperclip className="text-primary size-4" aria-hidden />
-          Attach CV
-        </button>
-        <input
-          ref={fileInput}
-          type="file"
-          accept=".pdf,.doc,.docx"
-          className="hidden"
-          onChange={(e) => attachCv(e.target.files?.[0])}
-        />
+        {canAttachCv && (
+          <>
+            <button
+              type="button"
+              disabled={locked}
+              onClick={() => fileInput.current?.click()}
+              className="border-primary bg-surface text-subtle rounded-button inline-flex h-11 items-center gap-2 border-[1.5px] px-4 text-sm font-semibold disabled:opacity-40"
+            >
+              <Paperclip className="text-primary size-4" aria-hidden />
+              Attach CV
+            </button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".pdf,.doc,.docx"
+              className="hidden"
+              onChange={(e) => attachCv(e.target.files?.[0])}
+            />
+          </>
+        )}
         {result && !result.ok && (
           <p role="alert" className="text-danger text-sm">
             {result.error}

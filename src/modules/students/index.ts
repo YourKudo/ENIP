@@ -1,13 +1,18 @@
 import "server-only";
 
 import { randomInt, randomUUID } from "node:crypto";
-import { cookies } from "next/headers";
 import { z } from "zod";
 
 import { auth } from "@/adapters/auth";
 import { db, type StudentRecord } from "@/adapters/db";
 import { emailBelongsTo, findIit } from "@/config/iits";
 import { isHeardFrom } from "@/config/sources";
+import {
+  clearPendingEmail,
+  getPendingEmail as readPendingEmail,
+  maskEmail,
+  setPendingEmail,
+} from "@/lib/pending-email";
 import {
   isValidReferralCode,
   normalizeCode,
@@ -206,7 +211,7 @@ export async function completeVerification(
     await onStudentVerified(student, pending.referralCode);
   }
 
-  (await cookies()).delete(PENDING_COOKIE);
+  await clearPendingEmail(PENDING_COOKIE);
   return { ok: true, student };
 }
 
@@ -214,31 +219,19 @@ export async function signOut() {
   await auth.signOut();
 }
 
-// "a••••••@iitb.ac.in": shown on the OTP screen without exposing the address.
 export async function getMaskedPendingEmail(): Promise<string | null> {
   const email = await getPendingEmail();
-  if (!email) return null;
-  const [local, domain] = email.split("@");
-  return `${local[0]}${"•".repeat(Math.max(local.length - 1, 3))}@${domain}`;
+  return email ? maskEmail(email) : null;
 }
 
 async function sendCodeTo(email: string): Promise<StartResult> {
   const sent = await auth.sendCode(email);
   if (!sent.ok) return { ok: false, fieldErrors: {}, formError: sent.error };
-  // The email waits in an httpOnly cookie, never in the URL.
-  (await cookies()).set(PENDING_COOKIE, email, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: PENDING_TTL_MS / 1000,
-  });
+  await setPendingEmail(PENDING_COOKIE, email, PENDING_TTL_MS / 1000);
   return { ok: true, email };
 }
 
-async function getPendingEmail() {
-  return (await cookies()).get(PENDING_COOKIE)?.value ?? null;
-}
+const getPendingEmail = () => readPendingEmail(PENDING_COOKIE);
 
 // Easy to say and remember: first 4 letters of the first name + 2 random
 // digits, e.g. "ROHA47". Random digits (not phone digits) so the code

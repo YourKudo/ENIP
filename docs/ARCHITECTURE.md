@@ -23,9 +23,11 @@ flowchart LR
 
   neon[("Neon Postgres<br/>students, sessions, OTP codes,<br/>waitlist, referrals, points")]
   brevo["Brevo SMTP<br/>sends OTP emails"]
-  enipApp["ENIP app backend<br/>(phase 2, mocked today)"]
+  team["YAL team's browser<br/>/team inbox"]
+  enipApp["ENIP app backend<br/>(phase 2)"]
 
   student -- "HTTPS" --> app
+  team -- "HTTPS: replies as seniors" --> app
   app -- "SQL (postgres.js + Drizzle)" --> neon
   app -- "SMTP 587" --> brevo
   brevo -- "code email" --> student
@@ -36,6 +38,7 @@ flowchart LR
 ```
 
 **How a change goes live:** commit → `git push` to `main` → Vercel builds and deploys automatically. Other branches get their own preview URL.
+**First deploy to a new database:** `npm run db:migrate`, then `npm run db:seed` (starter senior profiles).
 **Database changes are not automatic:** after changing `src/adapters/db/schema.ts`, run `npm run db:generate` and then `npm run db:migrate` against the target database, **before** pushing code that needs the new columns.
 
 ## 3. Tech stack
@@ -61,6 +64,7 @@ flowchart TB
     join["/join, /join/verify, /signin"]
     wait["/waitlist, /r/CODE"]
     chat["/chat/[id]"]
+    teamp["/team (YAL team inbox)"]
   end
 
   subgraph modules["Modules: business rules (src/modules)"]
@@ -68,13 +72,14 @@ flowchart TB
     growth["growth<br/>waitlist, referrals, points"]
     chatm["chat<br/>free-message limits, locks"]
     content["content<br/>guides, locked previews"]
+    teamm["team<br/>team sign-in, inbox, replies"]
   end
 
   subgraph adapters["Adapters: the only code that knows vendors (src/adapters)"]
     auth["auth<br/>local email OTP + session cookie"]
     db["db<br/>Postgres (Drizzle)"]
     email["email<br/>smtp | dev-inbox"]
-    enip["enip-app<br/>mock today, http later"]
+    enip["enip-app<br/>our DB today (local), app API later"]
   end
 
   pages --> modules --> adapters
@@ -123,6 +128,24 @@ sequenceDiagram
   W->>DB: After email verified: referral = successful (once per friend)
   W->>DB: +10 points to referrer (idempotent), recompute waitlist bonus
   A->>W: Waitlist page shows Joined 1, Points 10, moved up
+```
+
+### Team reply (phase 1)
+
+```mermaid
+sequenceDiagram
+  actor S as Student
+  participant W as Website
+  participant DB as Neon
+  actor T as YAL team member
+
+  S->>W: Sends a message to a senior profile (3 free)
+  W->>DB: Save in conversations + messages
+  T->>W: Signs in at /team (email on TEAM_EMAILS + code)
+  W-->>T: Inbox, chats waiting for a reply first
+  T->>W: Replies as that senior
+  W->>DB: Save reply (sent_by = team email)
+  W-->>S: Chat refreshes, first reply visible, later ones blurred until a referral
 ```
 
 Waitlist milestones: 1 referral moves you up 3 places, 2 move you up 7, and 3 skip the line. One referral also unlocks full chat.
@@ -186,27 +209,28 @@ Also: `pending_sign_ups`, `otp_codes` and `sessions` (sign-in), plus `unlocks` a
 
 Set in **Vercel → Project → Settings → Environment Variables** (production) and in `.env.local` (local, never committed). Values are secret and are not listed here.
 
-| Variable                                                        | Purpose                                                 | Production value |
-| --------------------------------------------------------------- | ------------------------------------------------------- | ---------------- |
-| `DATABASE_URL`                                                  | Neon connection string (use the pooled one)             | secret           |
-| `EMAIL_PROVIDER`                                                | `smtp` sends real email; `dev-inbox` only works locally | `smtp`           |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Brevo SMTP login and verified sender                    | secret           |
-| `SITE_URL`                                                      | Public address used in referral links                   | `<fill in>`      |
-| `AUTH_PROVIDER`                                                 | Sign-in implementation                                  | `local`          |
-| `ENIP_APP_PROVIDER`                                             | ENIP app connection                                     | `mock` (phase 1) |
+| Variable                                                        | Purpose                                                 | Production value  |
+| --------------------------------------------------------------- | ------------------------------------------------------- | ----------------- |
+| `DATABASE_URL`                                                  | Neon connection string (use the pooled one)             | secret            |
+| `EMAIL_PROVIDER`                                                | `smtp` sends real email; `dev-inbox` only works locally | `smtp`            |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Brevo SMTP login and verified sender                    | secret            |
+| `SITE_URL`                                                      | Public address used in referral links                   | `<fill in>`       |
+| `AUTH_PROVIDER`                                                 | Sign-in implementation                                  | `local`           |
+| `TEAM_EMAILS`                                                   | Comma-separated emails allowed into `/team`             | team's emails     |
+| `ENIP_APP_PROVIDER`                                             | ENIP app connection                                     | `local` (phase 1) |
 
 After changing a variable in Vercel, **redeploy** for it to take effect.
 
 ## 8. What's real vs. placeholder today
 
-| Area                                     | Status                                                                                                                                                                              |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sign-up, IIT email code, sign-in/out     | Real (Neon + Brevo)                                                                                                                                                                 |
-| Waitlist, referral links/codes, points   | Real (Neon)                                                                                                                                                                         |
-| Guides, stories, stats, testimonials     | Sample content in code (`src/modules/content/sample-data.ts`)                                                                                                                       |
-| Seniors list and search                  | Sample profiles (`src/adapters/enip-app/mock.ts`)                                                                                                                                   |
-| Chat                                     | Mock replies kept in server memory: **not reliable on Vercel** (each server instance has its own memory). Moving to the `conversations`/`messages` tables + a `/team` inbox is next |
-| WhatsApp alerts, admin portal, CV upload | Not built yet                                                                                                                                                                       |
+| Area                                     | Status                                                                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sign-up, IIT email code, sign-in/out     | Real (Neon + Brevo)                                                                                                                               |
+| Waitlist, referral links/codes, points   | Real (Neon)                                                                                                                                       |
+| Guides, stories, stats, testimonials     | Sample content in code (`src/modules/content/sample-data.ts`)                                                                                     |
+| Seniors list and search                  | `mentors` table in Neon. `npm run db:seed` adds 10 **sample** profiles: replace them with the real team's profiles (Drizzle Studio) before launch |
+| Chat                                     | Real (Neon `conversations`/`messages`). The YAL team signs in at `/team` (emails in `TEAM_EMAILS`) and replies as the senior profiles             |
+| WhatsApp alerts, admin portal, CV upload | Not built yet                                                                                                                                     |
 
 ## 9. Running it locally
 

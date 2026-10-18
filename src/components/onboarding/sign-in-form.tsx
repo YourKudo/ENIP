@@ -10,9 +10,13 @@ import { keepValuesOnSubmit } from "@/components/ui/keep-values";
 export function SignInForm({
   action,
   next,
+  label = "Institute email",
+  placeholder = "you@iitb.ac.in",
 }: {
   action: (previous: FormState, form: FormData) => Promise<FormState>;
   next: string;
+  label?: string;
+  placeholder?: string;
 }) {
   const [state, submit, pending] = useActionState(action, null);
   const error = state?.fieldErrors.email;
@@ -25,14 +29,14 @@ export function SignInForm({
       noValidate
     >
       <input type="hidden" name="next" value={next} />
-      <Field id="email" label="Institute email" error={error}>
+      <Field id="email" label={label} error={error}>
         <input
           id="email"
           name="email"
           type="email"
           inputMode="email"
           autoComplete="email"
-          placeholder="you@iitb.ac.in"
+          placeholder={placeholder}
           defaultValue={state?.values.email}
           className={inputClasses}
           aria-invalid={Boolean(error)}

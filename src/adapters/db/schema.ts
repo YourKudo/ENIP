@@ -105,6 +105,8 @@ export const messages = pgTable("messages", {
   kind: text("kind").notNull(), // "text" | "cv"
   body: text("body").notNull(),
   attachmentUrl: text("attachment_url"),
+  // For team replies: the /team member who wrote it (their email).
+  sentBy: text("sent_by"),
   appMessageId: text("app_message_id"),
   createdAt: createdAt(),
 });

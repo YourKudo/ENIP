@@ -1,8 +1,14 @@
-import { and, count, desc, eq, gt, sql, sum } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, sql, sum } from "drizzle-orm";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
-import type { Db, StudentDetails, StudentRecord } from "./index";
+import type {
+  Db,
+  MentorRecord,
+  MessageRecord,
+  StudentDetails,
+  StudentRecord,
+} from "./index";
 import * as schema from "./schema";
 
 // Postgres via Drizzle. Works with Neon, Supabase or any Postgres: only
@@ -32,7 +38,42 @@ const {
   waitlistEntries,
   referrals,
   pointsLedger,
+  mentors,
+  conversations,
+  messages,
 } = schema;
+
+// Ids in URLs are user input. Anything that isn't a uuid can't match a row
+// (and would make Postgres throw), so those lookups return early.
+const isUuid = (id: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+function toMentor(row: typeof mentors.$inferSelect): MentorRecord {
+  return {
+    id: row.id,
+    displayName: row.displayName,
+    avatarUrl: row.avatarUrl,
+    institute: row.institute,
+    branch: row.branch,
+    batch: row.batch,
+    jobTitle: row.jobTitle,
+    company: row.company,
+    helpWith: row.helpWith,
+    topics: row.topics,
+    memberType: row.memberType,
+  };
+}
+
+function toMessage(row: typeof messages.$inferSelect): MessageRecord {
+  return {
+    id: row.id,
+    sender: row.sender as MessageRecord["sender"],
+    kind: row.kind as MessageRecord["kind"],
+    body: row.body,
+    sentBy: row.sentBy,
+    createdAt: row.createdAt.getTime(),
+  };
+}
 
 function toStudent(row: typeof students.$inferSelect): StudentRecord {
   return {
@@ -309,6 +350,154 @@ export const postgresDb: Db = {
           at: r.at.getTime(),
         })),
       ];
+    },
+  },
+
+  mentors: {
+    async listActive() {
+      const rows = await orm()
+        .select()
+        .from(mentors)
+        .where(eq(mentors.isActive, true))
+        .orderBy(asc(mentors.createdAt));
+      return rows.map(toMentor);
+    },
+    async get(id) {
+      if (!isUuid(id)) return null;
+      const [row] = await orm()
+        .select()
+        .from(mentors)
+        .where(and(eq(mentors.id, id), eq(mentors.isActive, true)))
+        .limit(1);
+      return row ? toMentor(row) : null;
+    },
+  },
+
+  conversations: {
+    async get(id) {
+      if (!isUuid(id)) return null;
+      const [row] = await orm()
+        .select({
+          id: conversations.id,
+          studentId: conversations.studentId,
+          mentorId: conversations.mentorId,
+        })
+        .from(conversations)
+        .where(eq(conversations.id, id))
+        .limit(1);
+      return row ?? null;
+    },
+    async mentorIdsFor(studentId) {
+      const rows = await orm()
+        .select({ mentorId: conversations.mentorId })
+        .from(conversations)
+        .where(eq(conversations.studentId, studentId));
+      return rows.map((r) => r.mentorId);
+    },
+    // One query: every conversation with its latest message.
+    async listInbox() {
+      const rows = await orm().execute<{
+        conversation_id: string;
+        student_name: string;
+        student_iit_id: string;
+        mentor_name: string;
+        message_count: number;
+        sender: MessageRecord["sender"];
+        kind: MessageRecord["kind"];
+        body: string;
+        created_at: string;
+      }>(sql`
+        select c.id as conversation_id, s.name as student_name,
+               s.iit_id as student_iit_id, m.display_name as mentor_name,
+               last.message_count, last.sender, last.kind, last.body,
+               last.created_at
+        from ${conversations} c
+        join ${students} s on s.id = c.student_id
+        join ${mentors} m on m.id = c.mentor_id
+        join lateral (
+          select sender, kind, body, created_at,
+                 count(*) over ()::int as message_count
+          from ${messages}
+          where conversation_id = c.id
+          order by created_at desc
+          limit 1
+        ) last on true
+        order by last.created_at desc
+      `);
+      return rows.map((r) => ({
+        conversationId: r.conversation_id,
+        studentName: r.student_name,
+        studentIitId: r.student_iit_id,
+        mentorName: r.mentor_name,
+        messageCount: r.message_count,
+        lastMessage: {
+          sender: r.sender,
+          kind: r.kind,
+          body: r.body,
+          createdAt: new Date(r.created_at).getTime(),
+        },
+      }));
+    },
+  },
+
+  messages: {
+    async list(conversationId) {
+      if (!isUuid(conversationId)) return [];
+      const rows = await orm()
+        .select()
+        .from(messages)
+        .where(eq(messages.conversationId, conversationId))
+        .orderBy(asc(messages.createdAt));
+      return rows.map(toMessage);
+    },
+    async listBetween(studentId, mentorId) {
+      if (!isUuid(mentorId)) return [];
+      const rows = await orm()
+        .select({ message: messages })
+        .from(messages)
+        .innerJoin(conversations, eq(conversations.id, messages.conversationId))
+        .where(
+          and(
+            eq(conversations.studentId, studentId),
+            eq(conversations.mentorId, mentorId),
+          ),
+        )
+        .orderBy(asc(messages.createdAt));
+      return rows.map((r) => toMessage(r.message));
+    },
+    async addFromStudent({ studentId, mentorId, kind, body }) {
+      // The no-op update makes the upsert return the existing row's id.
+      const [conversation] = await orm()
+        .insert(conversations)
+        .values({ studentId, mentorId })
+        .onConflictDoUpdate({
+          target: [conversations.studentId, conversations.mentorId],
+          set: { studentId },
+        })
+        .returning({ id: conversations.id });
+      const [row] = await orm()
+        .insert(messages)
+        .values({
+          conversationId: conversation.id,
+          sender: "student",
+          kind,
+          body,
+        })
+        .returning();
+      return toMessage(row);
+    },
+    async addFromMentor({ conversationId, body, sentBy }) {
+      const [row] = await orm()
+        .insert(messages)
+        .values({
+          conversationId,
+          sender: "mentor",
+          kind: "text",
+          body,
+          sentBy,
+        })
+        .returning();
+      return toMessage(row);
     },
   },
 

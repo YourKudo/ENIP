@@ -63,6 +63,46 @@ export type InvitedFriend = {
   at: number;
 };
 
+// A senior shown on the website (phase 1: YAL team, EIRs, volunteer alumni).
+export type MentorRecord = {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  institute: string;
+  branch: string;
+  batch: number;
+  jobTitle: string;
+  company: string;
+  helpWith: string;
+  topics: string[];
+  memberType: string; // alumni | founder | yal-team | eir
+};
+
+export type MessageRecord = {
+  id: string;
+  sender: "student" | "mentor";
+  kind: "text" | "cv";
+  body: string;
+  sentBy: string | null; // team member who wrote a mentor reply
+  createdAt: number;
+};
+
+// One conversation as the /team inbox lists it.
+export type InboxRow = {
+  conversationId: string;
+  studentName: string;
+  studentIitId: string;
+  mentorName: string;
+  messageCount: number;
+  lastMessage: Pick<MessageRecord, "sender" | "kind" | "body" | "createdAt">;
+};
+
+export type ConversationRecord = {
+  id: string;
+  studentId: string;
+  mentorId: string;
+};
+
 export interface Db {
   students: {
     findById(id: string): Promise<StudentRecord | null>;
@@ -112,6 +152,33 @@ export interface Db {
     countSuccessful(referrerId: string): Promise<number>;
     // Successful referrals plus sign-ups still waiting for their OTP.
     listInvited(referrerId: string, code: string): Promise<InvitedFriend[]>;
+  };
+  mentors: {
+    listActive(): Promise<MentorRecord[]>;
+    get(id: string): Promise<MentorRecord | null>; // active ones only
+  };
+  conversations: {
+    get(id: string): Promise<ConversationRecord | null>;
+    // Mentors this student has written to.
+    mentorIdsFor(studentId: string): Promise<string[]>;
+    // Conversations with at least one message, latest activity first.
+    listInbox(): Promise<InboxRow[]>;
+  };
+  messages: {
+    list(conversationId: string): Promise<MessageRecord[]>;
+    listBetween(studentId: string, mentorId: string): Promise<MessageRecord[]>;
+    // Starts the conversation on the student's first message.
+    addFromStudent(input: {
+      studentId: string;
+      mentorId: string;
+      kind: MessageRecord["kind"];
+      body: string;
+    }): Promise<MessageRecord>;
+    addFromMentor(input: {
+      conversationId: string;
+      body: string;
+      sentBy: string;
+    }): Promise<MessageRecord>;
   };
   points: {
     // Idempotent: the same (reason, refId) is only ever counted once.

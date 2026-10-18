@@ -52,7 +52,7 @@ Owner shown per table. "→ Phase 2" says what happens to it when we connect.
 | whatsapp_consent_at | timestamptz, null  | when consent was given                                                                                       |
 | heard_from          | text, null         | "How did you hear about us?" id (`friend`, `whatsapp`, `instagram`, `linkedin`, `senior`, `campus`, `other`) |
 | referral_code       | text, unique       | first 4 letters of the name + 2 random digits, e.g. `ROHA47`; shared as the link `/r/ROHA47`                 |
-| role                | text               | `student` (default) or `mentor`, for `/team` access                                                          |
+| role                | text               | `student` (default). Not used yet: `/team` access comes from the `TEAM_EMAILS` list                          |
 | created_at          | timestamptz        |                                                                                                              |
 
 → Phase 2: the web calls `POST /v1/users:upsert` on the app (see §4.1) and stores the returned `app_user_id`.
@@ -70,7 +70,7 @@ Email-OTP sign-in: code hash, expiry, attempts, send times; session token hash, 
 | column             | type                     | notes                                                                                                                           |
 | ------------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | id                 | uuid PK                  |                                                                                                                                 |
-| student_id         | uuid FK → students, null | the team member's login account, for replying in `/team`                                                                        |
+| student_id         | uuid FK → students, null | not used yet (any `TEAM_EMAILS` member can reply as any profile)                                                                |
 | app_user_id        | text, null               | their app account, if they have one                                                                                             |
 | display_name       | text                     | real name or chosen username                                                                                                    |
 | avatar_url         | text, null               |                                                                                                                                 |
@@ -87,7 +87,7 @@ Email-OTP sign-in: code hash, expiry, attempts, send times; session token hash, 
 ### conversations, messages (web, phase 1)
 
 - **conversations:** id, student_id, mentor_id, created_at, `app_conversation_id` (null). Unique per (student, mentor).
-- **messages:** id, conversation_id, sender (`student` \| `mentor`), kind (`text` \| `cv`), body, attachment_url (null), created_at, `app_message_id` (null).
+- **messages:** id, conversation_id, sender (`student` \| `mentor`), kind (`text` \| `cv`), body, attachment_url (null), `sent_by` (the `/team` member's email, on mentor replies), created_at, `app_message_id` (null).
 
 → Phase 2: new chats live in the app. Phase-1 history is either copied into the app once (if the app team wants it) or kept read-only on the web.
 
